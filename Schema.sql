@@ -42,7 +42,6 @@ CREATE TABLE Club_Players (
 CREATE TABLE Game (
     Game_Id SERIAL PRIMARY KEY,
     Game_Date DATETIME,
-    -- Players involved
     Result VARCHAR,
     Opening_Id INTEGER
 );
