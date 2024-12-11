@@ -1,13 +1,13 @@
 # Chess Database
 
 ## Description
-This project is a micro-project for the Relational Database course, aimed at designing and implementing a relational database centered on chess players, tournaments, and related activities.
+This project is a micro-project for the 201.3 - Relational Database course, lectured by Professor Renault Richardet, is aimed at designing and implementing a relational database centered on chess players, tournaments, and related activities.
 
 ---
 
 ## Project Objectives
 ### Idea: A Chess Players Database
-This project focuses on organizing and managing data related to chess players, clubs, tournaments, games, and their performances over time. The system aims to provide a structured view of chess data for analysis and tracking purposes.
+This project focuses on organizing and managing data related to chess players, clubs, tournaments, games, and their encounter during tounrnaments. The system aims to provide a structured view of chess data for analysis and tracking purposes.
 
 ---
 
@@ -21,6 +21,12 @@ This project focuses on organizing and managing data related to chess players, c
   - Nationality
   - ELO rating
   - Playing styles
+
+### **Opening Management**
+- Detail about the opening
+   - ECO code
+   - Name
+   - agressiveness [Boolean]
 
 ### **Clubs Management**
 - Details of chess clubs, including:
@@ -40,13 +46,15 @@ This project focuses on organizing and managing data related to chess players, c
   - Name
   - Location
   - Dates
-  - Format (e.g., round-robin, knockout)
+  - Format (e.g., round-robin, knockout, swiss)
   - Prize pool
 
-### **Performance Tracking**
-- Key metrics:
-  - Rankings per tournament
-  - ELO progression over time
+### **Ranking of tournament Management**
+- Tournaments ranking details to include:
+   - rank
+   - name
+   - prize money won
+
 
 ---
 
@@ -61,11 +69,6 @@ The Chess Database provides an organized structure to store and query chess-rela
 - A historical log of tournaments and games.
 - Insights into player performance trends.
 
-### Metrics and Scale
-- Example Metrics:
-  - Tracks information for **hundreds of players**.
-  - Logs data for **dozens of tournaments and games annually**.
-  - Can store historical ELO ratings over **several years**.
 
 ### Unique Features
 - Enables linking games to tournaments and players.
@@ -85,7 +88,6 @@ The Chess Database provides an organized structure to store and query chess-rela
 - **Will model:**
   - Players, games, tournaments, and performance tracking.
   - Club affiliations and tournament results.
-- **Will not model:**
   - Financial details (e.g., prize payouts).
   - Scheduling systems for tournaments or games.
 
