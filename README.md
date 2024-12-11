@@ -17,6 +17,7 @@ This project focuses on organizing and managing data related to chess players, c
 - Information to track:
   - Name
   - Age
+  - Title
   - Club affiliation
   - Nationality
   - ELO rating
