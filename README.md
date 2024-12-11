@@ -71,9 +71,8 @@ The Chess Database provides an organized structure to store and query chess-rela
 
 
 ### Unique Features
-- Enables linking games to tournaments and players.
-- Tracks players' affiliations to clubs.
-- Provides detailed insights into players' progression and achievements.
+- Have a scheduling system for tournament, incrementive pairing round by round and final solution.
+- Have a ranking feature for tournament final results, 
 
 ---
 
@@ -81,7 +80,6 @@ The Chess Database provides an organized structure to store and query chess-rela
 
 ### Expected Challenges
 - Designing relationships between players, games, and tournaments effectively.
-- Ensuring scalability for large datasets (e.g., multiple years of tournaments).
 - Normalizing data while retaining query performance.
 
 ### Scope of Modeling
@@ -90,12 +88,12 @@ The Chess Database provides an organized structure to store and query chess-rela
   - Club affiliations and tournament results.
   - Financial details (e.g., prize payouts).
   - Scheduling systems for tournaments or games.
+- **Will not model:**
+  - game moves database
 
 ---
 
 ## Familiarity and Motivation
-As a chess enthusiast, this project combines personal interest with practical database design skills. My motivation lies in creating a system that can offer valuable insights into the chess world, such as player performance trends and game history analysis.
-
+As chess enthusiasts, this project combines personal interest with practical database design skills. Our motivation lies in creating a system that can offer insights into a pseudo chess world, such as player performance, gains and tournaments results.
 ### Data Availability
-- Initial data can be simulated or sourced from freely available chess tournament records and player databases online.
-
+- Initial data can be simulated or sourced from freely available chess tournament records and player databases online, for example TWIC. Probable adaptation may need to be done. If necessary, generated datas will be used to populated the tables.
