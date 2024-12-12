@@ -2,7 +2,7 @@
 
 ## Description
 
-This project is a micro-project for the 201.3 - Relational Database course, lectured by Professor Renault Richardet, is aimed at designing and implementing a relational database centered on chess players, tournaments, and related activities.
+This project is a micro-project for the 201.3 - Relational Database course, lectured by Professor Renault Richardet. It is aimed at designing and implementing a relational database centered on chess players, tournaments, and related activities.
 
 ---
 
@@ -10,7 +10,7 @@ This project is a micro-project for the 201.3 - Relational Database course, lect
 
 ### Idea: A Chess Players Database
 
-This project focuses on organizing and managing data related to chess players, clubs, tournaments, games, and their encounter during tounrnaments. The system aims to provide a structured view of chess data for analysis and tracking purposes.
+This project focuses on organizing and managing data related to chess players, clubs, tournaments, games, and their encounters during tournaments. The system provides a structured view of chess data for analysis and tracking purposes.
 
 ---
 
@@ -18,28 +18,28 @@ This project focuses on organizing and managing data related to chess players, c
 
 ### **Players Management**
 
-- Information to track:
-  - Name
+- Information tracked:
+  - First Name
+  - Last Name
   - Age
-  - Title
-  - Club affiliation
+  - Title (e.g., GM, IM, FM, etc.)
+  - ELO Rating
   - Nationality
-  - ELO rating
   - Playing styles
 
 ### **Opening Management**
 
-- Detail about the opening
-  - ECO code
+- Details about chess openings:
+  - ECO Code
   - Name
-  - agressiveness [Boolean]
+  - Aggressiveness (Boolean)
 
 ### **Clubs Management**
 
-- Details of chess clubs, including:
-  - Club name
+- Details of chess clubs:
+  - Club Name
   - Location
-  - Associated players
+  - Associated Players
 
 ### **Games Management**
 
@@ -51,19 +51,19 @@ This project focuses on organizing and managing data related to chess players, c
 
 ### **Tournament Management**
 
-- Tournaments details to include:
+- Details of tournaments:
   - Name
   - Location
-  - Dates
-  - Format (e.g., round-robin, knockout, swiss)
+  - Total number of rounds
+  - Format (e.g., round-robin, knockout, Swiss)
   - Prize pool
 
-### **Ranking of tournament Management**
+### **Tournament Ranking Management**
 
-- Tournaments ranking details to include:
-  - rank
-  - name
-  - prize money won
+- Details of tournament rankings:
+  - Rank
+  - Player Name
+  - Prize Money Won
 
 ---
 
@@ -75,7 +75,7 @@ Chess Database
 
 ### Organization and Purpose
 
-The Chess Database provides an organized structure to store and query chess-related data. It is designed to assist players, clubs, and tournament organizers by offering:
+The Chess Database provides an organized structure to store and query chess-related data. It assists players, clubs, and tournament organizers by offering:
 
 - A clear record of players and their achievements.
 - A historical log of tournaments and games.
@@ -83,8 +83,8 @@ The Chess Database provides an organized structure to store and query chess-rela
 
 ### Unique Features
 
-- Have a scheduling system for tournament, incrementive pairing round by round and final solution.
-- Have a ranking feature for tournament final results
+- A scheduling system for tournaments, with incremental pairing round by round and final standings.
+- A ranking feature for tournament results.
 
 ---
 
@@ -97,20 +97,20 @@ The Chess Database provides an organized structure to store and query chess-rela
 
 ### Scope of Modeling
 
-- **Will model:**
+- **Modeled:**
   - Players, games, tournaments, and performance tracking.
   - Club affiliations and tournament results.
   - Financial details (e.g., prize payouts).
   - Scheduling systems for tournaments or games.
-- **Will not model:**
-  - game moves database
+- **Not Modeled:**
+  - A detailed moves database for chess games.
 
 ---
 
 ## Familiarity and Motivation
 
-As chess enthusiasts, this project combines personal interest with practical database design skills. Our motivation lies in creating a system that can offer insights into a pseudo chess world, such as player performance, gains and tournaments results.
+As chess enthusiasts, this project combines personal interest with practical database design skills. The motivation lies in creating a system that offers insights into a pseudo chess world, such as player performance, gains, and tournament results.
 
 ### Data Availability
 
-- Initial data can be simulated or sourced from freely available chess tournament records and player databases online, for example TWIC. Probable adaptation may need to be done. If necessary, generated datas will be used to populated the tables.
+Initial data will be simulated or sourced from freely available chess tournament records and player databases online, such as TWIC. If necessary, generated data will be used to populate the tables.
