@@ -61,10 +61,9 @@ This project focuses on organizing and managing data related to chess players, c
 ### **Ranking of tournament Management**
 
 - Tournaments ranking details to include:
-   - rank
-   - name
-   - prize money won
-
+  - rank
+  - name
+  - prize money won
 
 ---
 
@@ -72,7 +71,7 @@ This project focuses on organizing and managing data related to chess players, c
 
 ### Project Title
 
-**Chess Database**
+Chess Database
 
 ### Organization and Purpose
 
@@ -82,11 +81,10 @@ The Chess Database provides an organized structure to store and query chess-rela
 - A historical log of tournaments and games.
 - Insights into player performance trends.
 
-
 ### Unique Features
 
 - Have a scheduling system for tournament, incrementive pairing round by round and final solution.
-- Have a ranking feature for tournament final results, 
+- Have a ranking feature for tournament final results
 
 ---
 
