@@ -44,6 +44,7 @@ CREATE TABLE Game (
     Game_Date DATETIME,
     Result VARCHAR,
     Opening_Id INTEGER
+    CONSTRAINT fk_opening FOREIGN KEY (Opening_Id) REFERENCES Opening(Opening_Id)
 );
 
 CREATE TABLE Game_Players (
