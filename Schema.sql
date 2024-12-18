@@ -57,6 +57,8 @@ CREATE TABLE Club_Players (
 CREATE TABLE Game (
     Game_Id SERIAL PRIMARY KEY,
     Game_Date TIMESTAMP,
+    Player_white_Id INTEGER,
+    Player_black_Id INTEGER,
     Result ENUM('1-0', '0-1', '1/2-1/2') NOT NULL, -- Stores the game result
     Opening_Id INTEGER,
     FOREIGN KEY (Opening_Id) REFERENCES Opening(Opening_Id) ON DELETE SET NULL
