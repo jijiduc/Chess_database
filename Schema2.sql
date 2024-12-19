@@ -528,9 +528,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Example Usage
--- SELECT simulate_tournament('Summer ELO Chess Tournament', 'Online', 7, 10000.00);
-
 
 
 
