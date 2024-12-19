@@ -1,4 +1,3 @@
-CREATE TYPE result_enum AS ENUM ('1-0', '0-1', '1/2-1/2');
 -- Table to store player details
 CREATE TABLE Player (
     Player_Id SERIAL PRIMARY KEY,
@@ -60,8 +59,9 @@ CREATE TABLE Game (
     Game_Date TIMESTAMP,
     Player_white_Id INTEGER,
     Player_black_Id INTEGER,
-    result result_enum NOT NULL, -- Stores the game result
+    result VARCHAR(7) NOT NULL, -- Stores the game result
     Opening_Id INTEGER,
+    CONSTRAINT Chk_result CHECK (result IN ('1-0', '0-1', '1/2-1/2')),
     FOREIGN KEY (Opening_Id) REFERENCES Opening(Opening_Id) ON DELETE SET NULL
 );
 
@@ -88,14 +88,21 @@ CREATE TABLE Tournament (
 -- Table to store ranking details in tournaments
 CREATE TABLE Tournament_Ranking (
     Tournament_Id INTEGER,
-    Rank VARCHAR(10),                -- Maximum 10 characters for rank (e.g., "1st")
+    Rank INT,                        -- Rank of the player in the tournament
     Player_Name VARCHAR(50),         -- Maximum 50 characters for player name
     Prize_Money_Won DECIMAL(15, 2),  -- Prize money with 2 decimal places
     PRIMARY KEY (Tournament_Id, Rank),
     FOREIGN KEY (Tournament_Id) REFERENCES Tournament(Tournament_Id)
 );
 
-
+-- Create Tournament_Players Table
+CREATE TABLE Tournament_Players (
+    Tournament_Id INTEGER NOT NULL,
+    Player_Id INTEGER NOT NULL,
+    PRIMARY KEY (Tournament_Id, Player_Id),
+    FOREIGN KEY (Tournament_Id) REFERENCES Tournament(Tournament_Id) ON DELETE CASCADE,
+    FOREIGN KEY (Player_Id) REFERENCES Player(Player_Id) ON DELETE CASCADE
+);
 
 
 
