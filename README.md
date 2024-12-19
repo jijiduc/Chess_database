@@ -2,7 +2,7 @@
 
 ## Description
 
-This project is a micro-project for the 201.3 - Relational Database course, lectured by Professor Renault Richardet. It is aimed at designing and implementing a relational database centered on chess players, tournaments, and related activities.
+This project is a micro-project for the 201.3 - Relational Database course, lectured by Professor Renaud Richardet. It is aimed at designing and implementing a relational database centered on chess players, tournaments, and related activities.
 
 ---
 

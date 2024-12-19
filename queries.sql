@@ -26,3 +26,19 @@ JOIN Player pb ON g.Player_black_Id = pb.Player_Id
 JOIN Opening o ON g.Opening_Id = o.Opening_Id
 WHERE t.Tournament_Id = (SELECT Tournament_Id FROM LastTournament)
 ORDER BY g.Game_Date;
+
+--Number 3 :  Retrieve the players (by rank) for each tournament along with their prize money and tournament name
+SELECT 
+    t.Name AS "Tournament Name",
+    tr.Player_Name AS "Player Name",
+    tr.Rank AS "Rank",
+    tr.Prize_Money_Won AS "Prize Money"
+FROM 
+    Tournament_Ranking tr
+JOIN 
+    Tournament t ON tr.Tournament_Id = t.Tournament_Id
+WHERE 
+    tr.Rank IS NOT NULL -- Only include players with valid ranks
+ORDER BY 
+    t.Name ASC, -- Order by tournament name
+    tr.Rank ASC; -- Within each tournament, order by rank
