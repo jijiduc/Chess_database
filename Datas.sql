@@ -84,37 +84,279 @@ VALUES
 ('Igor', 'Smirnov', 31, 'NM', 2280),
 ('Maria', 'Schmidt', 24, 'WNM', 2250);
 
--- Insert player nationalities
-INSERT INTO Player_Nationality (Player_Id, Nationality)
-VALUES
-(1, 'Norwegian'),
-(2, 'American'),
-(3, 'American'),
-(4, 'Indian'),
-(5, 'Indian'),
-(6, 'Uzbek'),
-(7, 'French'),
-(8, 'Russian'),
-(9, 'Chinese'),
-(10, 'Indian'),
-(11, 'Armenian'),
-(12, 'American'),
-(13, 'Cuban'),
-(14, 'Indian'),
-(15, 'Polish'),
-(16, 'Vietnamese'),
-(17, 'Chinese'),
-(18, 'American'),
-(19, 'German'),
-(20, 'French'),
-(21, 'Azerbaijani'),
-(22, 'Dutch'),
-(23, 'Indian'),
-(24, 'Indian'),
-(25, 'Hungarian'),
-(26, 'Chinese'),
-(27, 'Russian'),
-(28, 'Russian');
+-- Populate Country table with standard data
+INSERT INTO Country (Name, ISO_Code, Region) VALUES
+-- Europe
+('Albania', 'ALB', 'Europe'),
+('Armenia', 'ARM', 'Europe'),
+('Austria', 'AUT', 'Europe'),
+('Azerbaijan', 'AZE', 'Europe'),
+('Belarus', 'BLR', 'Europe'),
+('Belgium', 'BEL', 'Europe'),
+('Bosnia and Herzegovina', 'BIH', 'Europe'),
+('Bulgaria', 'BGR', 'Europe'),
+('Croatia', 'HRV', 'Europe'),
+('Czech Republic', 'CZE', 'Europe'),
+('Denmark', 'DNK', 'Europe'),
+('Estonia', 'EST', 'Europe'),
+('Finland', 'FIN', 'Europe'),
+('France', 'FRA', 'Europe'),
+('Georgia', 'GEO', 'Europe'),
+('Germany', 'DEU', 'Europe'),
+('Greece', 'GRC', 'Europe'),
+('Hungary', 'HUN', 'Europe'),
+('Iceland', 'ISL', 'Europe'),
+('Ireland', 'IRL', 'Europe'),
+('Italy', 'ITA', 'Europe'),
+('Latvia', 'LVA', 'Europe'),
+('Lithuania', 'LTU', 'Europe'),
+('Luxembourg', 'LUX', 'Europe'),
+('Malta', 'MLT', 'Europe'),
+('Moldova', 'MDA', 'Europe'),
+('Monaco', 'MCO', 'Europe'),
+('Montenegro', 'MNE', 'Europe'),
+('Netherlands', 'NLD', 'Europe'),
+('North Macedonia', 'MKD', 'Europe'),
+('Norway', 'NOR', 'Europe'),
+('Poland', 'POL', 'Europe'),
+('Portugal', 'PRT', 'Europe'),
+('Romania', 'ROU', 'Europe'),
+('Russia', 'RUS', 'Europe'),
+('Serbia', 'SRB', 'Europe'),
+('Slovakia', 'SVK', 'Europe'),
+('Slovenia', 'SVN', 'Europe'),
+('Spain', 'ESP', 'Europe'),
+('Sweden', 'SWE', 'Europe'),
+('Switzerland', 'CHE', 'Europe'),
+('Ukraine', 'UKR', 'Europe'),
+('United Kingdom', 'GBR', 'Europe'),
+
+-- Asia
+('Afghanistan', 'AFG', 'Asia'),
+('Bangladesh', 'BGD', 'Asia'),
+('Bhutan', 'BTN', 'Asia'),
+('Cambodia', 'KHM', 'Asia'),
+('China', 'CHN', 'Asia'),
+('India', 'IND', 'Asia'),
+('Indonesia', 'IDN', 'Asia'),
+('Iran', 'IRN', 'Asia'),
+('Iraq', 'IRQ', 'Asia'),
+('Israel', 'ISR', 'Asia'),
+('Japan', 'JPN', 'Asia'),
+('Kazakhstan', 'KAZ', 'Asia'),
+('Kuwait', 'KWT', 'Asia'),
+('Kyrgyzstan', 'KGZ', 'Asia'),
+('Laos', 'LAO', 'Asia'),
+('Lebanon', 'LBN', 'Asia'),
+('Malaysia', 'MYS', 'Asia'),
+('Mongolia', 'MNG', 'Asia'),
+('Myanmar', 'MMR', 'Asia'),
+('Nepal', 'NPL', 'Asia'),
+('North Korea', 'PRK', 'Asia'),
+('Oman', 'OMN', 'Asia'),
+('Pakistan', 'PAK', 'Asia'),
+('Philippines', 'PHL', 'Asia'),
+('Qatar', 'QAT', 'Asia'),
+('Saudi Arabia', 'SAU', 'Asia'),
+('Singapore', 'SGP', 'Asia'),
+('South Korea', 'KOR', 'Asia'),
+('Sri Lanka', 'LKA', 'Asia'),
+('Syria', 'SYR', 'Asia'),
+('Taiwan', 'TWN', 'Asia'),
+('Tajikistan', 'TJK', 'Asia'),
+('Thailand', 'THA', 'Asia'),
+('Turkey', 'TUR', 'Asia'),
+('Turkmenistan', 'TKM', 'Asia'),
+('United Arab Emirates', 'ARE', 'Asia'),
+('Uzbekistan', 'UZB', 'Asia'),
+('Vietnam', 'VNM', 'Asia'),
+('Yemen', 'YEM', 'Asia'),
+
+-- Americas
+('Argentina', 'ARG', 'Americas'),
+('Bahamas', 'BHS', 'Americas'),
+('Barbados', 'BRB', 'Americas'),
+('Belize', 'BLZ', 'Americas'),
+('Bolivia', 'BOL', 'Americas'),
+('Brazil', 'BRA', 'Americas'),
+('Canada', 'CAN', 'Americas'),
+('Chile', 'CHL', 'Americas'),
+('Colombia', 'COL', 'Americas'),
+('Costa Rica', 'CRI', 'Americas'),
+('Cuba', 'CUB', 'Americas'),
+('Dominican Republic', 'DOM', 'Americas'),
+('Ecuador', 'ECU', 'Americas'),
+('El Salvador', 'SLV', 'Americas'),
+('Guatemala', 'GTM', 'Americas'),
+('Guyana', 'GUY', 'Americas'),
+('Haiti', 'HTI', 'Americas'),
+('Honduras', 'HND', 'Americas'),
+('Jamaica', 'JAM', 'Americas'),
+('Mexico', 'MEX', 'Americas'),
+('Nicaragua', 'NIC', 'Americas'),
+('Panama', 'PAN', 'Americas'),
+('Paraguay', 'PRY', 'Americas'),
+('Peru', 'PER', 'Americas'),
+('Suriname', 'SUR', 'Americas'),
+('Trinidad and Tobago', 'TTO', 'Americas'),
+('United States', 'USA', 'Americas'),
+('Uruguay', 'URY', 'Americas'),
+('Venezuela', 'VEN', 'Americas'),
+
+-- Africa
+('Algeria', 'DZA', 'Africa'),
+('Angola', 'AGO', 'Africa'),
+('Benin', 'BEN', 'Africa'),
+('Botswana', 'BWA', 'Africa'),
+('Burkina Faso', 'BFA', 'Africa'),
+('Burundi', 'BDI', 'Africa'),
+('Cameroon', 'CMR', 'Africa'),
+('Cape Verde', 'CPV', 'Africa'),
+('Central African Republic', 'CAF', 'Africa'),
+('Chad', 'TCD', 'Africa'),
+('Comoros', 'COM', 'Africa'),
+('Congo', 'COG', 'Africa'),
+('Democratic Republic of the Congo', 'COD', 'Africa'),
+('Djibouti', 'DJI', 'Africa'),
+('Egypt', 'EGY', 'Africa'),
+('Equatorial Guinea', 'GNQ', 'Africa'),
+('Eritrea', 'ERI', 'Africa'),
+('Ethiopia', 'ETH', 'Africa'),
+('Gabon', 'GAB', 'Africa'),
+('Gambia', 'GMB', 'Africa'),
+('Ghana', 'GHA', 'Africa'),
+('Guinea', 'GIN', 'Africa'),
+('Guinea-Bissau', 'GNB', 'Africa'),
+('Ivory Coast', 'CIV', 'Africa'),
+('Kenya', 'KEN', 'Africa'),
+('Lesotho', 'LSO', 'Africa'),
+('Liberia', 'LBR', 'Africa'),
+('Libya', 'LBY', 'Africa'),
+('Madagascar', 'MDG', 'Africa'),
+('Malawi', 'MWI', 'Africa'),
+('Mali', 'MLI', 'Africa'),
+('Mauritania', 'MRT', 'Africa'),
+('Mauritius', 'MUS', 'Africa'),
+('Morocco', 'MAR', 'Africa'),
+('Mozambique', 'MOZ', 'Africa'),
+('Namibia', 'NAM', 'Africa'),
+('Niger', 'NER', 'Africa'),
+('Nigeria', 'NGA', 'Africa'),
+('Rwanda', 'RWA', 'Africa'),
+('Senegal', 'SEN', 'Africa'),
+('Seychelles', 'SYC', 'Africa'),
+('Sierra Leone', 'SLE', 'Africa'),
+('Somalia', 'SOM', 'Africa'),
+('South Africa', 'ZAF', 'Africa'),
+('South Sudan', 'SSD', 'Africa'),
+('Sudan', 'SDN', 'Africa'),
+('Swaziland', 'SWZ', 'Africa'),
+('Tanzania', 'TZA', 'Africa'),
+('Togo', 'TGO', 'Africa'),
+('Tunisia', 'TUN', 'Africa'),
+('Uganda', 'UGA', 'Africa'),
+('Zambia', 'ZMB', 'Africa'),
+('Zimbabwe', 'ZWE', 'Africa'),
+
+-- Oceania
+('Australia', 'AUS', 'Oceania'),
+('Fiji', 'FJI', 'Oceania'),
+('Kiribati', 'KIR', 'Oceania'),
+('Marshall Islands', 'MHL', 'Oceania'),
+('Micronesia', 'FSM', 'Oceania'),
+('Nauru', 'NRU', 'Oceania'),
+('New Zealand', 'NZL', 'Oceania'),
+('Palau', 'PLW', 'Oceania'),
+('Papua New Guinea', 'PNG', 'Oceania'),
+('Samoa', 'WSM', 'Oceania'),
+('Solomon Islands', 'SLB', 'Oceania'),
+('Tonga', 'TON', 'Oceania'),
+('Tuvalu', 'TUV', 'Oceania'),
+('Vanuatu', 'VUT', 'Oceania');
+
+-- Insert Player-Country relationships
+INSERT INTO Player_Country (Player_Id, Country_Id, Start_Date)
+SELECT p.Player_Id, c.Country_Id, '2024-01-01'  -- Using a default start date
+FROM Player p, Country c
+WHERE (
+    -- Mapping each player to their country
+    (p.First_Name = 'Magnus' AND p.Last_Name = 'Carlsen' AND c.Name = 'Norway') OR
+    (p.First_Name = 'Fabiano' AND p.Last_Name = 'Caruana' AND c.Name = 'United States') OR
+    (p.First_Name = 'Hikaru' AND p.Last_Name = 'Nakamura' AND c.Name = 'United States') OR
+    (p.First_Name = 'Arjun' AND p.Last_Name = 'Erigaisi' AND c.Name = 'India') OR
+    (p.First_Name = 'Gukesh' AND p.Last_Name = 'Dommaraju' AND c.Name = 'India') OR
+    (p.First_Name = 'Nodirbek' AND p.Last_Name = 'Abdusattorov' AND c.Name = 'Uzbekistan') OR
+    (p.First_Name = 'Alireza' AND p.Last_Name = 'Firouzja' AND c.Name = 'France') OR
+    (p.First_Name = 'Ian' AND p.Last_Name = 'Nepomniachtchi' AND c.Name = 'Russia') OR
+    (p.First_Name = 'Yi' AND p.Last_Name = 'Wei' AND c.Name = 'China') OR
+    (p.First_Name = 'Viswanathan' AND p.Last_Name = 'Anand' AND c.Name = 'India') OR
+    (p.First_Name = 'Levon' AND p.Last_Name = 'Aronian' AND c.Name = 'Armenia') OR
+    (p.First_Name = 'Wesley' AND p.Last_Name = 'So' AND c.Name = 'United States') OR
+    (p.First_Name = 'Sergey' AND p.Last_Name = 'Karjakin' AND c.Name = 'Russia') OR
+    (p.First_Name = 'Alexander' AND p.Last_Name = 'Grischuk' AND c.Name = 'Russia') OR
+    (p.First_Name = 'Dominguez' AND p.Last_Name = 'Perez' AND c.Name = 'United States') OR
+    (p.First_Name = 'Praggnanandhaa' AND c.Name = 'India') OR
+    (p.First_Name = 'Jan-Krzysztof' AND p.Last_Name = 'Duda' AND c.Name = 'Poland') OR
+    (p.First_Name = 'Quang Liem' AND p.Last_Name = 'Le' AND c.Name = 'Vietnam') OR
+    (p.First_Name = 'Liren' AND p.Last_Name = 'Ding' AND c.Name = 'China') OR
+    (p.First_Name = 'Hans' AND p.Last_Name = 'Niemann' AND c.Name = 'United States') OR
+    (p.First_Name = 'Vincent' AND p.Last_Name = 'Keymer' AND c.Name = 'Germany') OR
+    (p.First_Name = 'Maxime' AND p.Last_Name = 'Vachier-Lagrave' AND c.Name = 'France') OR
+    (p.First_Name = 'Shakhriyar' AND p.Last_Name = 'Mamedyarov' AND c.Name = 'Azerbaijan') OR
+    (p.First_Name = 'Anish' AND p.Last_Name = 'Giri' AND c.Name = 'Netherlands') OR
+    -- Strong GMs
+    (p.First_Name = 'Peter' AND p.Last_Name = 'Svidler' AND c.Name = 'Russia') OR
+    (p.First_Name = 'Boris' AND p.Last_Name = 'Gelfand' AND c.Name = 'Israel') OR
+    (p.First_Name = 'Pentala' AND p.Last_Name = 'Harikrishna' AND c.Name = 'India') OR
+    (p.First_Name = 'Dmitry' AND p.Last_Name = 'Andreikin' AND c.Name = 'Russia') OR
+    (p.First_Name = 'Vladimir' AND p.Last_Name = 'Kramnik' AND c.Name = 'Russia') OR
+    (p.First_Name = 'Sam' AND p.Last_Name = 'Shankland' AND c.Name = 'United States') OR
+    (p.First_Name = 'David' AND p.Last_Name = 'Navara' AND c.Name = 'Czech Republic') OR
+    (p.First_Name = 'Bu' AND p.Last_Name = 'Xiangzhi' AND c.Name = 'China') OR
+    (p.First_Name = 'Radoslaw' AND p.Last_Name = 'Wojtaszek' AND c.Name = 'Poland') OR
+    (p.First_Name = 'Francisco' AND p.Last_Name = 'Vallejo Pons' AND c.Name = 'Spain') OR
+    -- Top Female Players
+    (p.First_Name = 'Hou' AND p.Last_Name = 'Yifan' AND c.Name = 'China') OR
+    (p.First_Name = 'Ju' AND p.Last_Name = 'Wenjun' AND c.Name = 'China') OR
+    (p.First_Name = 'Aleksandra' AND p.Last_Name = 'Goryachkina' AND c.Name = 'Russia') OR
+    (p.First_Name = 'Koneru' AND p.Last_Name = 'Humpy' AND c.Name = 'India') OR
+    (p.First_Name = 'Anna' AND p.Last_Name = 'Muzychuk' AND c.Name = 'Ukraine') OR
+    (p.First_Name = 'Kateryna' AND p.Last_Name = 'Lagno' AND c.Name = 'Russia') OR
+    (p.First_Name = 'Mariya' AND p.Last_Name = 'Muzychuk' AND c.Name = 'Ukraine') OR
+    (p.First_Name = 'Alexandra' AND p.Last_Name = 'Kosteniuk' AND c.Name = 'Switzerland') OR
+    (p.First_Name = 'Tan' AND p.Last_Name = 'Zhongyi' AND c.Name = 'China') OR
+    (p.First_Name = 'Lei' AND p.Last_Name = 'Tingjie' AND c.Name = 'China') OR
+    -- Strong IMs and Rising Stars
+    (p.First_Name = 'Nihal' AND p.Last_Name = 'Sarin' AND c.Name = 'India') OR
+    (p.First_Name = 'Raunak' AND p.Last_Name = 'Sadhwani' AND c.Name = 'India') OR
+    (p.First_Name = 'Christopher' AND p.Last_Name = 'Yoo' AND c.Name = 'United States') OR
+    (p.First_Name = 'Abhimanyu' AND p.Last_Name = 'Mishra' AND c.Name = 'United States') OR
+    (p.First_Name = 'Marc' AND p.Last_Name = 'Andria Maurizzi' AND c.Name = 'France') OR
+    (p.First_Name = 'Jonas' AND p.Last_Name = 'Bjerre' AND c.Name = 'Denmark') OR
+    (p.First_Name = 'Leon' AND p.Last_Name = 'Mendonca' AND c.Name = 'India') OR
+    -- Female IMs and WGMs
+    (p.First_Name = 'Bibisara' AND p.Last_Name = 'Assaubayeva' AND c.Name = 'Kazakhstan') OR
+    (p.First_Name = 'Zhansaya' AND p.Last_Name = 'Abdumalik' AND c.Name = 'Kazakhstan') OR
+    (p.First_Name = 'Dinara' AND p.Last_Name = 'Wagner' AND c.Name = 'Germany') OR
+    (p.First_Name = 'Nurgyul' AND p.Last_Name = 'Salimova' AND c.Name = 'Bulgaria') OR
+    (p.First_Name = 'Zhu' AND p.Last_Name = 'Jiner' AND c.Name = 'China') OR
+    -- National Masters and FMs
+    (p.First_Name = 'Maximillian' AND p.Last_Name = 'Lu' AND c.Name = 'United States') OR
+    (p.First_Name = 'Andrew' AND p.Last_Name = 'Tang' AND c.Name = 'United States') OR
+    (p.First_Name = 'Daniel' AND p.Last_Name = 'Naroditsky' AND c.Name = 'United States') OR
+    (p.First_Name = 'Eric' AND p.Last_Name = 'Rosen' AND c.Name = 'United States') OR
+    (p.First_Name = 'Levy' AND p.Last_Name = 'Rozman' AND c.Name = 'United States') OR
+    (p.First_Name = 'Anna' AND p.Last_Name = 'Rudolf' AND c.Name = 'Hungary') OR
+    (p.First_Name = 'Nemo' AND p.Last_Name = 'Zhou' AND c.Name = 'China') OR
+    (p.First_Name = 'Alejandro' AND p.Last_Name = 'Ramirez' AND c.Name = 'Costa Rica') OR
+    -- Club Level Strong Players
+    (p.First_Name = 'Thomas' AND p.Last_Name = 'Weber' AND c.Name = 'Germany') OR
+    (p.First_Name = 'Sofia' AND p.Last_Name = 'Martinez' AND c.Name = 'Spain') OR
+    (p.First_Name = 'Viktor' AND p.Last_Name = 'Korchnoi Jr' AND c.Name = 'Switzerland') OR
+    (p.First_Name = 'Laura' AND p.Last_Name = 'Chen' AND c.Name = 'China') OR
+    (p.First_Name = 'Igor' AND p.Last_Name = 'Smirnov' AND c.Name = 'Russia') OR
+    (p.First_Name = 'Maria' AND p.Last_Name = 'Schmidt' AND c.Name = 'Germany')
+);
 
 INSERT INTO Opening (Name, ECO_Code, Agressiveness)
 VALUES

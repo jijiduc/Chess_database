@@ -10,6 +10,23 @@ CREATE TABLE Player (
     CONSTRAINT Chk_Age CHECK(Age BETWEEN 0 AND 99),
     CONSTRAINT Chk_Title CHECK(Title IN ('GM', 'WGM', 'IM', 'WIM', 'FM', 'WFM', 'NM', 'CM', 'WCM', 'WNM') OR Title IS NULL)
 );
+-- Add Country table
+CREATE TABLE Country (
+    Country_Id SERIAL PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL UNIQUE,
+    ISO_Code CHAR(3) NOT NULL UNIQUE,  -- ISO 3166-1 alpha-3 codes
+    Region VARCHAR(50),                -- Optional: for grouping countries by region
+    CONSTRAINT Chk_ISO CHECK(LENGTH(ISO_Code) = 3)
+);
+
+CREATE TABLE Player_Country (
+    Player_Id INTEGER,
+    Country_Id INTEGER,
+    Start_Date DATE,  -- Optional: when the player started representing this country
+    PRIMARY KEY (Player_Id, Country_Id),
+    FOREIGN KEY (Player_Id) REFERENCES Player(Player_Id) ON DELETE CASCADE,
+    FOREIGN KEY (Country_Id) REFERENCES Country(Country_Id) ON DELETE CASCADE
+);
 
 -- Table to store player nationalities (Depends on Player)
 CREATE TABLE Player_Nationality (
@@ -187,31 +204,37 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Modified create_tournament function to require odd number of rounds
 CREATE OR REPLACE FUNCTION create_tournament(
     tournament_name VARCHAR(100), 
-    tournament_location VARCHAR(100), 
+    tournament_location VARCHAR(100),
+    number_of_players INTEGER,
     total_rounds INT, 
     tournament_format VARCHAR(50), 
     total_prize_pool DECIMAL(15,2)
 ) RETURNS INTEGER AS $$
 DECLARE
     new_tournament_id INTEGER;
-    min_players INTEGER;
-    max_players CONSTANT INTEGER := 12;
     selected_players_count INTEGER;
-    adjusted_player_count INTEGER;
 BEGIN
-    -- Set minimum players to be equal to number of rounds
-    min_players := total_rounds;
-
-    -- Validate input parameters
-    IF total_rounds < 3 OR total_rounds > 10 THEN
-        RAISE EXCEPTION 'Tournament rounds must be between 3 and 10';
+    -- Validate number of rounds is odd
+    IF total_rounds % 2 = 0 THEN
+        RAISE EXCEPTION 'Number of rounds must be odd';
     END IF;
 
-    -- Validate that min_players doesn't exceed max_players
-    IF min_players > max_players THEN
-        RAISE EXCEPTION 'Number of rounds (%) exceeds maximum allowed players (%). Please reduce the number of rounds.', min_players, max_players;
+    -- Validate input parameters for rounds range
+    IF total_rounds < 3 OR total_rounds > 11 THEN
+        RAISE EXCEPTION 'Tournament rounds must be between 3 and 11 and must be odd';
+    END IF;
+
+    -- Validate number of players
+    IF number_of_players < total_rounds OR number_of_players > 100 THEN
+        RAISE EXCEPTION 'Number of players must be between the number of rounds (%) and 100', total_rounds;
+    END IF;
+
+    -- Ensure number of players is even
+    IF number_of_players % 2 != 0 THEN
+        RAISE EXCEPTION 'Number of players must be even';
     END IF;
 
     -- Ensure unique tournament name
@@ -244,35 +267,20 @@ BEGIN
     WHERE ELO_Rating IS NOT NULL;
 
     -- Ensure we have enough players
-    IF selected_players_count < min_players THEN
+    IF selected_players_count < number_of_players THEN
         -- Clean up the created tournament
         DELETE FROM Tournament WHERE Tournament_Id = new_tournament_id;
-        RAISE EXCEPTION 'Not enough players with ELO ratings to create tournament. Need at least % players, but only have %.', 
-                       min_players, selected_players_count;
+        RAISE EXCEPTION 'Not enough players with ELO ratings. Need %, but only have %.', 
+                       number_of_players, selected_players_count;
     END IF;
 
-    -- Calculate number of players to select
-    -- First ensure it's at least min_players
-    -- Then ensure it's no more than max_players
-    -- Finally ensure it's even by rounding up to next even number
-    adjusted_player_count := LEAST(
-        max_players,
-        GREATEST(
-            min_players,
-            -- Generate a random number between min_players and max_players
-            (SELECT FLOOR(RANDOM() * (max_players - min_players + 1)) + min_players)
-        )
-    );
-    -- Make sure it's even by rounding up if odd
-    adjusted_player_count := adjusted_player_count + (adjusted_player_count % 2);
-
-    -- Randomly select players
+    -- Randomly select exact number of players requested
     WITH RandomPlayers AS (
         SELECT Player_Id
         FROM Player
         WHERE ELO_Rating IS NOT NULL
         ORDER BY RANDOM()
-        LIMIT adjusted_player_count
+        LIMIT number_of_players
     )
     -- Insert selected players into the tournament
     INSERT INTO Tournament_Players (Tournament_Id, Player_Id)
@@ -282,19 +290,19 @@ BEGIN
     -- Get the final count of selected players
     GET DIAGNOSTICS selected_players_count = ROW_COUNT;
 
-    -- Validate final player count
-    IF selected_players_count < min_players OR selected_players_count % 2 != 0 THEN
+    -- Final validation
+    IF selected_players_count != number_of_players THEN
         -- Clean up the created tournament
         DELETE FROM Tournament WHERE Tournament_Id = new_tournament_id;
-        RAISE EXCEPTION 'Failed to select appropriate number of players. Selected: %. Needed: even number >= %', 
-                       selected_players_count, min_players;
+        RAISE EXCEPTION 'Failed to select correct number of players. Selected: %. Needed: %', 
+                       selected_players_count, number_of_players;
     END IF;
 
     RETURN new_tournament_id;
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to pair players for round (fixed version)
+-- Function to pair players for rounds
 CREATE OR REPLACE FUNCTION pair_players_for_round(
     input_tournament_id INTEGER, 
     current_round INTEGER
@@ -531,24 +539,31 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION simulate_tournament(
     tournament_name VARCHAR(100),
     tournament_location VARCHAR(100),
-    total_rounds INTEGER,
+    number_of_players INTEGER,
+    number_of_rounds INTEGER,
     prize_pool DECIMAL(15,2)
 ) RETURNS INTEGER AS $$
 DECLARE
     tournament_id INTEGER;
     round_number INTEGER;
 BEGIN
+    -- Validate number of rounds is odd before proceeding
+    IF number_of_rounds % 2 = 0 THEN
+        RAISE EXCEPTION 'Number of rounds must be odd';
+    END IF;
+    
     -- Create tournament with input parameters
     tournament_id := create_tournament(
         tournament_name, 
-        tournament_location, 
-        total_rounds, 
+        tournament_location,
+        number_of_players,
+        number_of_rounds, 
         'Swiss', 
         prize_pool
     );
     
     -- Simulate each round
-    FOR round_number IN 1..total_rounds LOOP
+    FOR round_number IN 1..number_of_rounds LOOP
         -- Create and play games for the round
         PERFORM create_tournament_games_with_results(tournament_id, round_number);
     END LOOP;
@@ -569,3 +584,14 @@ ON Tournament(Tournament_Id);
 
 CREATE INDEX idx_game
 ON Game_Players(Player_Id,Game_Id);  
+
+-- Add indexes for better query performance
+CREATE INDEX idx_player_country_player
+ON Player_Country(Player_Id);
+
+CREATE INDEX idx_player_country_country
+ON Player_Country(Country_Id);
+
+-- Add index on country name for faster lookups
+CREATE INDEX idx_country_name
+ON Country(Name);
