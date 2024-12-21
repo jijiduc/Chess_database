@@ -2,8 +2,8 @@
 SELECT simulate_tournament(
     'Open de Paris',     -- tournament_name
     'Paris',             -- tournament_location
-    34,                   -- number_of_players
-    9,                   -- number_of_rounds (must be odd)
+    12,                   -- number_of_players
+    7,                   -- number_of_rounds (must be odd)
     50000.00            -- prize_pool
 );
 -- display the tournament id at the end of the query
@@ -46,7 +46,7 @@ JOIN Country cb ON pcb.Country_Id = cb.Country_Id
 ORDER BY 
     g.Round_Number, 
     g.Round_Game_Number;
-    
+
 -- Query 3 : Retrieve all tournament rankings
 WITH PlayerScores AS (
     SELECT 

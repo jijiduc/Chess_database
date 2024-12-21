@@ -318,117 +318,169 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to pair players for rounds
+-- Function to pair players for rounds using Swiss system
 CREATE OR REPLACE FUNCTION pair_players_for_round(
-    input_tournament_id INTEGER, 
+    input_tournament_id INTEGER,
     current_round INTEGER
 ) RETURNS TABLE(white_player_id INTEGER, black_player_id INTEGER, selected_opening_id INTEGER) AS $$
 DECLARE
     total_players INTEGER;
     unpaired_count INTEGER;
 BEGIN
-    -- Get total number of players in tournament
+    -- First, let's announce which round we're pairing
+    RAISE NOTICE 'Creating pairings for round % of tournament %', current_round, input_tournament_id;
+
+    -- Count how many players are in the tournament
     SELECT COUNT(*) INTO total_players
     FROM Tournament_Players
     WHERE Tournament_Id = input_tournament_id;
+    
+    RAISE NOTICE 'Total players: %. Need to create % pairs.', total_players, total_players / 2;
 
     RETURN QUERY
     WITH PlayerStandings AS (
-        -- Calculate current standings
         SELECT 
             tp.Player_Id,
-            p.ELO_Rating, 
+            p.ELO_Rating,
             COALESCE(
                 (SELECT COUNT(*) 
                  FROM Game g
                  WHERE g.Tournament_Id = input_tournament_id
                  AND ((g.Player_white_Id = tp.Player_Id AND g.result = '1-0')
                     OR (g.Player_black_Id = tp.Player_Id AND g.result = '0-1'))), 0
-            ) as wins,
+            ) * 1.0 + 
             COALESCE(
                 (SELECT COUNT(*) 
                  FROM Game g
                  WHERE g.Tournament_Id = input_tournament_id
                  AND (g.Player_white_Id = tp.Player_Id OR g.Player_black_Id = tp.Player_Id)
                  AND g.result = '1/2-1/2'), 0
-            ) as draws,
+            ) * 0.5 as score,
             COALESCE(
                 (SELECT COUNT(*) 
                  FROM Game g
                  WHERE g.Tournament_Id = input_tournament_id
-                   AND g.Round_Number = current_round
-                   AND (g.Player_white_Id = tp.Player_Id OR g.Player_black_Id = tp.Player_Id)
-                ), 0
-            ) as is_paired_this_round
+                   AND g.Player_white_Id = tp.Player_Id), 0
+            ) - 
+            COALESCE(
+                (SELECT COUNT(*) 
+                 FROM Game g
+                 WHERE g.Tournament_Id = input_tournament_id
+                   AND g.Player_black_Id = tp.Player_Id), 0
+            ) as color_balance
         FROM Tournament_Players tp
         JOIN Player p ON tp.Player_Id = p.Player_Id
         WHERE tp.Tournament_Id = input_tournament_id
     ),
     UnpairedPlayers AS (
-        -- Get all players not yet paired in this round
         SELECT 
-            ps.Player_Id,
-            ps.ELO_Rating,
-            (ps.wins + ps.draws * 0.5) as score,
-            ROW_NUMBER() OVER (ORDER BY (ps.wins + ps.draws * 0.5) DESC, ps.ELO_Rating DESC) as ranking
+            ps.*,
+            ROW_NUMBER() OVER (ORDER BY score DESC, ELO_Rating DESC) as rank
         FROM PlayerStandings ps
-        WHERE ps.is_paired_this_round = 0
     ),
-    PossiblePairs AS (
-        -- Generate all possible pairings between unpaired players
+    PossiblePairings AS (
         SELECT 
-            p1.Player_Id as white_player_id,
-            p2.Player_Id as black_player_id,
-            p1.score as white_score,
-            p2.score as black_score,
-            p1.ranking as white_ranking,
-            p2.ranking as black_ranking,
-            ABS(p1.score - p2.score) as score_diff,
-            -- Add row number to select top pairs
-            ROW_NUMBER() OVER (
-                PARTITION BY p1.Player_Id
-                ORDER BY 
-                    ABS(p1.score - p2.score),      -- Prefer players with similar scores
-                    ABS(p1.ranking - p2.ranking),   -- Then prefer players with similar rankings
-                    RANDOM()                        -- Add randomization for equal cases
-            ) as pair_priority
+            p1.Player_Id as player1_id,
+            p2.Player_Id as player2_id,
+            p1.score as score1,
+            p2.score as score2,
+            p1.color_balance as balance1,
+            p2.color_balance as balance2,
+            p1.rank as rank1,
+            p2.rank as rank2,
+            ABS(p1.score - p2.score) * 100 +  
+            ABS(p1.rank - p2.rank) * 10 +     
+            CASE 
+                WHEN ABS(p1.color_balance) + ABS(p2.color_balance) > 2 THEN 50 
+                ELSE 0 
+            END +                              
+            RANDOM() as pairing_score          
         FROM UnpairedPlayers p1
         CROSS JOIN UnpairedPlayers p2
-        WHERE 
-            p1.Player_Id < p2.Player_Id  -- Avoid self-pairing and duplicates
-            AND NOT EXISTS (
-                -- Check if these players haven't played each other before
-                SELECT 1 FROM Game g
-                WHERE g.Tournament_Id = input_tournament_id
-                AND ((g.Player_white_Id = p1.Player_Id AND g.Player_black_Id = p2.Player_Id)
-                    OR (g.Player_white_Id = p2.Player_Id AND g.Player_black_Id = p1.Player_Id))
-            )
+        WHERE p1.Player_Id < p2.Player_Id
+        AND NOT EXISTS (
+            SELECT 1 FROM Game g
+            WHERE g.Tournament_Id = input_tournament_id
+            AND ((g.Player_white_Id = p1.Player_Id AND g.Player_black_Id = p2.Player_Id)
+                OR (g.Player_white_Id = p2.Player_Id AND g.Player_black_Id = p1.Player_Id))
+        )
+    ),
+    RankedPairings AS (
+        SELECT 
+            player1_id,
+            player2_id,
+            score1,
+            score2,
+            balance1,
+            balance2,
+            pairing_score,
+            ROW_NUMBER() OVER (
+                ORDER BY pairing_score
+            ) as pairing_rank
+        FROM PossiblePairings
     ),
     SelectedPairs AS (
-        -- Select the best pairs
+        SELECT DISTINCT ON (p1)
+            p1,
+            p2
+        FROM (
+            SELECT 
+                LEAST(player1_id, player2_id) as p1,
+                GREATEST(player1_id, player2_id) as p2,
+                pairing_rank
+            FROM RankedPairings
+        ) sorted_pairs
+        ORDER BY p1, pairing_rank
+    ),
+    FinalPairings AS (
         SELECT 
-            white_player_id,
-            black_player_id,
-            -- Select a random opening for each pair
-            (SELECT Opening_Id 
-             FROM Opening 
-             OFFSET floor(random() * (SELECT COUNT(*) FROM Opening))
-             LIMIT 1) as selected_opening_id
-        FROM PossiblePairs
-        WHERE pair_priority = 1
-        ORDER BY 
-            white_ranking,  -- Ensure deterministic ordering
-            RANDOM()       -- Add some randomization for fairness
+            sp.p1,
+            sp.p2,
+            CASE 
+                WHEN up1.color_balance <= up2.color_balance THEN sp.p1
+                ELSE sp.p2
+            END as white_player,
+            CASE 
+                WHEN up1.color_balance <= up2.color_balance THEN sp.p2
+                ELSE sp.p1
+            END as black_player,
+            -- Add row number for opening selection
+            ROW_NUMBER() OVER (ORDER BY RANDOM()) as pair_number
+        FROM SelectedPairs sp
+        JOIN UnpairedPlayers up1 ON up1.Player_Id = sp.p1
+        JOIN UnpairedPlayers up2 ON up2.Player_Id = sp.p2
+    ),
+    RandomOpenings AS (
+        -- Select random openings ensuring uniqueness
+        SELECT 
+            Opening_Id,
+            ROW_NUMBER() OVER (ORDER BY RANDOM()) as opening_number
+        FROM Opening
+        -- Get only the number of openings we need
+        LIMIT (SELECT COUNT(*) FROM FinalPairings)
     )
-    SELECT * FROM SelectedPairs;
+    -- Final selection with unique random openings
+    SELECT 
+        fp.white_player,
+        fp.black_player,
+        ro.Opening_Id
+    FROM FinalPairings fp
+    JOIN RandomOpenings ro ON ro.opening_number = fp.pair_number
+    LIMIT total_players / 2;
 
     -- Verify that we've paired everyone
     GET DIAGNOSTICS unpaired_count = ROW_COUNT;
     
+    -- Announce how many pairs were created
+    RAISE NOTICE 'Created % pairs for round %', unpaired_count, current_round;
+    
+    -- Verify we have the correct number of pairs
     IF unpaired_count * 2 != total_players THEN
         RAISE EXCEPTION 'Failed to pair all players. Expected % pairs, got %', 
                        total_players / 2, unpaired_count;
     END IF;
+
+    RAISE NOTICE 'Successfully completed pairing for round %', current_round;
 END;
 $$ LANGUAGE plpgsql;
 
