@@ -1,12 +1,4 @@
--- Index creation
-CREATE INDEX idx_player
-ON Player(ELO_Rating)
 
-CREATE INDEX idx_tournament
-ON Tournament(Tournament_Id)
-
-CREATE INDEX idx_game
-ON Game_Players(Player_Id,Game_Id)
 
 -- Table to store player details
 CREATE TABLE Player (
@@ -538,7 +530,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Index creation
+CREATE INDEX idx_player
+ON Player(ELO_Rating);  -- Added semicolon
 
+CREATE INDEX idx_tournament
+ON Tournament(Tournament_Id);  -- Added semicolon
 
-
-
+CREATE INDEX idx_game
+ON Game_Players(Player_Id,Game_Id);  -- Added semicolon

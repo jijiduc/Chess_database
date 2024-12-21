@@ -1,5 +1,5 @@
 -- number 1 : créer un tournoi
-SELECT simulate_tournament('Summer ELO Chess Tournament', 'Online', 7, 10000.00);
+SELECT simulate_tournament('Open de Paris', 'Paris', 7, 10000.00);
 -- number 2 : voir un tournoi
 WITH LastTournament AS (
     SELECT Tournament_Id 
