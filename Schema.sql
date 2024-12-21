@@ -59,13 +59,17 @@ CREATE TABLE Club_Players (
 CREATE TABLE Game (
     Game_Id SERIAL PRIMARY KEY,
     Game_Date TIMESTAMP,
-    Round_number INTEGER,
-    Player_white_Id INTEGER,
-    Player_black_Id INTEGER,
-    result VARCHAR(7) NOT NULL, -- Stores the game result
+    Tournament_Id INTEGER,
+    Round_Number INTEGER,
+    Round_Game_Number INTEGER,
+    Player_White_Id INTEGER,
+    Player_Black_Id INTEGER,
+    Result VARCHAR(7) NOT NULL,
     Opening_Id INTEGER,
-    CONSTRAINT Chk_result CHECK (result IN ('1-0', '0-1', '1/2-1/2')),
-    FOREIGN KEY (Opening_Id) REFERENCES Opening(Opening_Id) ON DELETE SET NULL
+    CONSTRAINT Chk_Result CHECK (Result IN ('1-0', '0-1', '1/2-1/2')),
+    CONSTRAINT Unique_Round_Game UNIQUE (Tournament_Id, Round_Number, Round_Game_Number),
+    FOREIGN KEY (Opening_Id) REFERENCES Opening(Opening_Id) ON DELETE SET NULL,
+    FOREIGN KEY (Tournament_Id) REFERENCES Tournament(Tournament_Id) ON DELETE CASCADE
 );
 
 -- Table to store players participating in games
@@ -366,7 +370,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Updated create_tournament_games_with_results function
+-- Function to create tournament games with results
 CREATE OR REPLACE FUNCTION create_tournament_games_with_results(
     input_tournament_id INTEGER,
     current_round INTEGER
@@ -375,6 +379,7 @@ DECLARE
     pair_record RECORD;
     game_result VARCHAR(7);
     new_game_id INTEGER;
+    game_number INTEGER := 1;
 BEGIN
     -- Validate tournament exists
     IF NOT EXISTS (SELECT 1 FROM Tournament WHERE Tournament_Id = input_tournament_id) THEN
@@ -391,19 +396,25 @@ BEGIN
             pair_record.black_player_id
         );
         
-        -- Insert game with ELO-weighted result
+        -- Insert game with round numbering and random opening
         INSERT INTO Game (
             Game_Date, 
-            Player_white_Id, 
-            Player_black_Id, 
+            Tournament_Id,
+            Round_Number,
+            Round_Game_Number,
+            Player_White_Id, 
+            Player_Black_Id, 
             Result, 
             Opening_Id
         ) VALUES (
-            CURRENT_TIMESTAMP, 
+            CURRENT_TIMESTAMP,
+            input_tournament_id,
+            current_round,
+            game_number,
             pair_record.white_player_id, 
             pair_record.black_player_id, 
             game_result,
-            pair_record.selected_opening_id
+            (SELECT Opening_Id FROM Opening ORDER BY RANDOM() LIMIT 1)
         ) RETURNING Game_Id INTO new_game_id;
 
         -- Insert players into Game_Players table
@@ -411,6 +422,9 @@ BEGIN
         VALUES 
             (new_game_id, pair_record.white_player_id),
             (new_game_id, pair_record.black_player_id);
+            
+        -- Increment game number for next game in this round
+        game_number := game_number + 1;
     END LOOP;
 END;
 $$ LANGUAGE plpgsql;

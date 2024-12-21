@@ -81,10 +81,71 @@ The Chess Database provides an organized structure to store and query chess-rela
 - A historical log of tournaments and games.
 - Insights into player performance trends.
 
-### Unique Features
+### Database Normalization Analysis
+
+The database is designed to be in Third Normal Form (3NF). Here's the analysis of how it meets the normalization requirements:
+
+#### First Normal Form (1NF)
+
+- All tables have a primary key
+  - Player table has atomic columns for First_Name, Last_Name, Age, etc.
+- Each column contains atomic values
+  - Multiple nationalities are handled in a separate Player_Nationality table
+- No repeating groups
+  - Multiple player styles are handled in a separate Player_Styles table
+
+#### Second Normal Form (2NF)
+
+Meets 1NF requirements and no partial dependencies on the primary key
+Examples:
+
+- Game_Players table only contains the Game_Id and Player_Id, with other player information stored in the Player table
+- Tournament_Players table only contains Tournament_Id and Player_Id relationships
+- Club_Players table maintains only the club-player relationships
+
+#### Third Normal Form (3NF)
+
+Meets 2NF requirements and no transitive dependencies
+Examples:
+
+- Player information is separated from nationality (Player_Nationality table)
+- Opening information is separated from games (Opening table)
+- Tournament rankings are separated from tournament details (Tournament_Ranking table)
+- Game details are normalized with round numbers and game numbers within rounds
+- Club information is separated from player details
+
+#### Key Design Decisions for 3NF:
+
+Player-Related Information:
+
+- Core player details in Player table
+- Separate tables for nationalities and styles
+- No redundant storage of calculated data
+
+Game Management:
+
+- Games are uniquely identified within tournaments using round_number and round_game_number
+- Opening selections are stored as references to the Opening table
+- Results are stored with proper constraints
+
+Tournament Structure:
+
+- Tournament details separated from rankings
+- Prize money calculations handled through functions
+- Clear separation of tournament-player relationships
+
+Referential Integrity:
+
+- Proper foreign key constraints throughout
+- Cascade deletions where appropriate
+- Null handling for optional relationships
+
+### Features
 
 - A scheduling system for tournaments, with incremental pairing round by round and final standings.
 - A ranking feature for tournament results.
+- Openings are randomly selected for each game
+- Game Numbering System : Each game in a tournament round has a unique identifier in format: Round_Number.Round_Game_Number.
 
 ---
 
