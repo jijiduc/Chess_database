@@ -1,88 +1,112 @@
-INSERT INTO Player (First_Name, Last_Name, Age, Title, ELO_Rating)
+-- Insert data into the tables
+INSERT INTO Title (Title_Code, Title_Name, Title_Description, Min_ELO) 
 VALUES 
--- Top Male GMs (2700+)
-('Magnus', 'Carlsen', 33, 'GM', 2831),
-('Fabiano', 'Caruana', 32, 'GM', 2803),
-('Hikaru', 'Nakamura', 36, 'GM', 2802),
-('Arjun', 'Erigaisi', 20, 'GM', 2800),
-('Gukesh', 'Dommaraju', 18, 'GM', 2776),
-('Nodirbek', 'Abdusattorov', 19, 'GM', 2767),
-('Alireza', 'Firouzja', 20, 'GM', 2763),
-('Ian', 'Nepomniachtchi', 33, 'GM', 2753),
-('Yi', 'Wei', 24, 'GM', 2750),
-('Viswanathan', 'Anand', 54, 'GM', 2750),
-('Levon', 'Aronian', 41, 'GM', 2747),
-('Wesley', 'So', 30, 'GM', 2747),
-('Sergey', 'Karjakin', 34, 'GM', 2745),
-('Alexander', 'Grischuk', 40, 'GM', 2744),
-('Dominguez', 'Perez', 41, 'GM', 2741),
-('Praggnanandhaa', 'R', 18, 'GM', 2740),
-('Jan-Krzysztof', 'Duda', 26, 'GM', 2740),
-('Quang Liem', 'Le', 32, 'GM', 2739),
-('Liren', 'Ding', 31, 'GM', 2734),
-('Hans', 'Niemann', 21, 'GM', 2734),
-('Vincent', 'Keymer', 19, 'GM', 2733),
-('Maxime', 'Vachier-Lagrave', 33, 'GM', 2732),
-('Shakhriyar', 'Mamedyarov', 39, 'GM', 2732),
-('Anish', 'Giri', 30, 'GM', 2730),
+    ('GM', 'Grandmaster', 'The highest title a chess player can attain', 2500),
+    ('WGM', 'Woman Grandmaster', 'The highest title a female chess player can attain', 2300),
+    ('IM', 'International Master', 'The second-highest title awarded by FIDE', 2400),
+    ('WIM', 'Woman International Master', 'The second-highest title for female players', 2200),
+    ('FM', 'FIDE Master', 'The third-highest title awarded by FIDE', 2300),
+    ('WFM', 'Woman FIDE Master', 'The third-highest title for female players', 2100),
+    ('CM', 'Candidate Master', 'The lowest-ranking FIDE title', 2200),
+    ('WCM', 'Woman Candidate Master', 'The lowest-ranking FIDE title for female players', 2000),
+    ('NM', 'National Master', 'National level master title', 2200),
+    ('WNM', 'Woman National Master', 'National level master title for female players', 2000);
 
--- Strong GMs (2650-2699)
-('Peter', 'Svidler', 47, 'GM', 2699),
-('Boris', 'Gelfand', 55, 'GM', 2698),
-('Pentala', 'Harikrishna', 37, 'GM', 2697),
-('Dmitry', 'Andreikin', 33, 'GM', 2696),
-('Vladimir', 'Kramnik', 48, 'GM', 2695),
-('Sam', 'Shankland', 32, 'GM', 2694),
-('David', 'Navara', 38, 'GM', 2693),
-('Bu', 'Xiangzhi', 38, 'GM', 2692),
-('Radoslaw', 'Wojtaszek', 36, 'GM', 2691),
-('Francisco', 'Vallejo Pons', 40, 'GM', 2690),
+-- Then, insert players with title_id reference
+INSERT INTO Player (First_Name, Last_Name, Age, Title_Id, ELO_Rating)
+SELECT 
+    p.First_Name,
+    p.Last_Name,
+    p.Age,
+    t.Title_Id,
+    p.ELO_Rating
+FROM (VALUES
+    -- Top Male GMs (2700+)
+    ('Magnus', 'Carlsen', 33, 'GM', 2831),
+    ('Fabiano', 'Caruana', 32, 'GM', 2803),
+    ('Hikaru', 'Nakamura', 36, 'GM', 2802),
+    ('Arjun', 'Erigaisi', 20, 'GM', 2800),
+    ('Gukesh', 'Dommaraju', 18, 'GM', 2776),
+    ('Nodirbek', 'Abdusattorov', 19, 'GM', 2767),
+    ('Alireza', 'Firouzja', 20, 'GM', 2763),
+    ('Ian', 'Nepomniachtchi', 33, 'GM', 2753),
+    ('Yi', 'Wei', 24, 'GM', 2750),
+    ('Viswanathan', 'Anand', 54, 'GM', 2750),
+    ('Levon', 'Aronian', 41, 'GM', 2747),
+    ('Wesley', 'So', 30, 'GM', 2747),
+    ('Sergey', 'Karjakin', 34, 'GM', 2745),
+    ('Alexander', 'Grischuk', 40, 'GM', 2744),
+    ('Dominguez', 'Perez', 41, 'GM', 2741),
+    ('Praggnanandhaa', 'R', 18, 'GM', 2740),
+    ('Jan-Krzysztof', 'Duda', 26, 'GM', 2740),
+    ('Quang Liem', 'Le', 32, 'GM', 2739),
+    ('Liren', 'Ding', 31, 'GM', 2734),
+    ('Hans', 'Niemann', 21, 'GM', 2734),
+    ('Vincent', 'Keymer', 19, 'GM', 2733),
+    ('Maxime', 'Vachier-Lagrave', 33, 'GM', 2732),
+    ('Shakhriyar', 'Mamedyarov', 39, 'GM', 2732),
+    ('Anish', 'Giri', 30, 'GM', 2730),
 
--- Top Female Players
-('Hou', 'Yifan', 29, 'GM', 2680),
-('Ju', 'Wenjun', 32, 'GM', 2660),
-('Aleksandra', 'Goryachkina', 25, 'GM', 2658),
-('Koneru', 'Humpy', 36, 'GM', 2650),
-('Anna', 'Muzychuk', 33, 'GM', 2645),
-('Kateryna', 'Lagno', 34, 'GM', 2640),
-('Mariya', 'Muzychuk', 31, 'GM', 2635),
-('Alexandra', 'Kosteniuk', 39, 'GM', 2630),
-('Tan', 'Zhongyi', 32, 'WGM', 2625),
-('Lei', 'Tingjie', 26, 'WGM', 2620),
+    -- Strong GMs (2650-2699)
+    ('Peter', 'Svidler', 47, 'GM', 2699),
+    ('Boris', 'Gelfand', 55, 'GM', 2698),
+    ('Pentala', 'Harikrishna', 37, 'GM', 2697),
+    ('Dmitry', 'Andreikin', 33, 'GM', 2696),
+    ('Vladimir', 'Kramnik', 48, 'GM', 2695),
+    ('Sam', 'Shankland', 32, 'GM', 2694),
+    ('David', 'Navara', 38, 'GM', 2693),
+    ('Bu', 'Xiangzhi', 38, 'GM', 2692),
+    ('Radoslaw', 'Wojtaszek', 36, 'GM', 2691),
+    ('Francisco', 'Vallejo Pons', 40, 'GM', 2690),
 
--- Strong IMs and Rising Stars
-('Nihal', 'Sarin', 19, 'GM', 2645),
-('Raunak', 'Sadhwani', 18, 'GM', 2635),
-('Christopher', 'Yoo', 16, 'IM', 2590),
-('Abhimanyu', 'Mishra', 14, 'IM', 2585),
-('Marc', 'Andria Maurizzi', 16, 'IM', 2580),
-('Jonas', 'Bjerre', 19, 'IM', 2575),
-('Leon', 'Mendonca', 17, 'IM', 2570),
+    -- Top Female Players
+    ('Hou', 'Yifan', 29, 'GM', 2680),
+    ('Ju', 'Wenjun', 32, 'GM', 2660),
+    ('Aleksandra', 'Goryachkina', 25, 'GM', 2658),
+    ('Koneru', 'Humpy', 36, 'GM', 2650),
+    ('Anna', 'Muzychuk', 33, 'GM', 2645),
+    ('Kateryna', 'Lagno', 34, 'GM', 2640),
+    ('Mariya', 'Muzychuk', 31, 'GM', 2635),
+    ('Alexandra', 'Kosteniuk', 39, 'GM', 2630),
+    ('Tan', 'Zhongyi', 32, 'WGM', 2625),
+    ('Lei', 'Tingjie', 26, 'WGM', 2620),
 
--- Female IMs and WGMs
-('Bibisara', 'Assaubayeva', 19, 'WGM', 2520),
-('Zhansaya', 'Abdumalik', 23, 'IM', 2515),
-('Dinara', 'Wagner', 22, 'WIM', 2490),
-('Nurgyul', 'Salimova', 20, 'WIM', 2485),
-('Zhu', 'Jiner', 21, 'WGM', 2480),
+    -- Strong IMs and Rising Stars
+    ('Nihal', 'Sarin', 19, 'GM', 2645),
+    ('Raunak', 'Sadhwani', 18, 'GM', 2635),
+    ('Christopher', 'Yoo', 16, 'IM', 2590),
+    ('Abhimanyu', 'Mishra', 14, 'IM', 2585),
+    ('Marc', 'Andria Maurizzi', 16, 'IM', 2580),
+    ('Jonas', 'Bjerre', 19, 'IM', 2575),
+    ('Leon', 'Mendonca', 17, 'IM', 2570),
 
--- National Masters and FMs
-('Maximillian', 'Lu', 18, 'FM', 2450),
-('Andrew', 'Tang', 23, 'FM', 2445),
-('Daniel', 'Naroditsky', 28, 'FM', 2440),
-('Eric', 'Rosen', 29, 'FM', 2435),
-('Levy', 'Rozman', 28, 'IM', 2430),
-('Anna', 'Rudolf', 35, 'WGM', 2425),
-('Nemo', 'Zhou', 17, 'FM', 2420),
-('Alejandro', 'Ramirez', 35, 'GM', 2415),
+    -- Female IMs and WGMs
+    ('Bibisara', 'Assaubayeva', 19, 'WGM', 2520),
+    ('Zhansaya', 'Abdumalik', 23, 'IM', 2515),
+    ('Dinara', 'Wagner', 22, 'WIM', 2490),
+    ('Nurgyul', 'Salimova', 20, 'WIM', 2485),
+    ('Zhu', 'Jiner', 21, 'WGM', 2480),
 
--- Club Level Strong Players
-('Thomas', 'Weber', 25, 'CM', 2350),
-('Sofia', 'Martinez', 22, 'WCM', 2325),
-('Viktor', 'Korchnoi Jr', 28, 'FM', 2310),
-('Laura', 'Chen', 20, 'WFM', 2300),
-('Igor', 'Smirnov', 31, 'NM', 2280),
-('Maria', 'Schmidt', 24, 'WNM', 2250);
+    -- National Masters and FMs
+    ('Maximillian', 'Lu', 18, 'FM', 2450),
+    ('Andrew', 'Tang', 23, 'FM', 2445),
+    ('Daniel', 'Naroditsky', 28, 'FM', 2440),
+    ('Eric', 'Rosen', 29, 'FM', 2435),
+    ('Levy', 'Rozman', 28, 'IM', 2430),
+    ('Anna', 'Rudolf', 35, 'WGM', 2425),
+    ('Nemo', 'Zhou', 17, 'FM', 2420),
+    ('Alejandro', 'Ramirez', 35, 'GM', 2415),
+
+    -- Club Level Strong Players
+    ('Thomas', 'Weber', 25, 'CM', 2350),
+    ('Sofia', 'Martinez', 22, 'WCM', 2325),
+    ('Viktor', 'Korchnoi Jr', 28, 'FM', 2310),
+    ('Laura', 'Chen', 20, 'WFM', 2300),
+    ('Igor', 'Smirnov', 31, 'NM', 2280),
+    ('Maria', 'Schmidt', 24, 'WNM', 2250)
+
+) AS p(First_Name, Last_Name, Age, Title_Code, ELO_Rating)
+JOIN Title t ON t.Title_Code = p.Title_Code;
 
 -- Populate Country table with standard data
 INSERT INTO Country (Name, ISO_Code, Region) VALUES

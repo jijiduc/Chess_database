@@ -1,15 +1,26 @@
+-- Create Title table
+CREATE TABLE Title (
+    Title_Id SERIAL PRIMARY KEY,
+    Title_Code VARCHAR(10) NOT NULL UNIQUE,
+    Title_Name VARCHAR(50) NOT NULL,
+    Title_Description TEXT,
+    Min_ELO INTEGER,
+    CONSTRAINT Chk_Title_Code CHECK(Title_Code IN ('GM', 'WGM', 'IM', 'WIM', 'FM', 'WFM', 'CM', 'WCM', 'NM', 'WNM'))
+);
+
 -- Table to store player details (No dependencies)
 CREATE TABLE Player (
     Player_Id SERIAL PRIMARY KEY,
     First_Name VARCHAR(50) NOT NULL,
     Last_Name VARCHAR(50) NOT NULL,
     Age INTEGER,
-    Title VARCHAR(10),
+    Title_Id INTEGER,
     ELO_Rating INTEGER,
     CONSTRAINT Chk_ELO CHECK(ELO_Rating >= 0),
     CONSTRAINT Chk_Age CHECK(Age BETWEEN 0 AND 99),
-    CONSTRAINT Chk_Title CHECK(Title IN ('GM', 'WGM', 'IM', 'WIM', 'FM', 'WFM', 'NM', 'CM', 'WCM', 'WNM') OR Title IS NULL)
+    CONSTRAINT fk_player_title FOREIGN KEY (Title_Id) REFERENCES Title(Title_Id)
 );
+
 -- Add Country table
 CREATE TABLE Country (
     Country_Id SERIAL PRIMARY KEY,

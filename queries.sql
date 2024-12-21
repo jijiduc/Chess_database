@@ -43,10 +43,11 @@ JOIN Country cb ON pcb.Country_Id = cb.Country_Id
 WHERE t.Tournament_Id = (SELECT Tournament_Id FROM LastTournament)
 ORDER BY g.Round_Number, g.Round_Game_Number;
 
--- Query 3: Retrieve tournament rankings with player countries
+-- Query: Retrieve tournament rankings with player countries and titles
 SELECT 
     t.Name AS "Tournament Name",
     tr.Player_Name AS "Player Name",
+    ti.Title_Code AS "Title",
     c.Name AS "Country",
     tr.Rank AS "Rank",
     tr.Prize_Money_Won AS "Prize Money"
@@ -56,6 +57,8 @@ JOIN
     Tournament t ON tr.Tournament_Id = t.Tournament_Id
 -- Join to get player information
 JOIN Player p ON CONCAT(p.First_Name, ' ', p.Last_Name) = tr.Player_Name
+-- Join to get title information
+JOIN Title ti ON p.Title_Id = ti.Title_Id
 -- Join to get country information
 JOIN Player_Country pc ON p.Player_Id = pc.Player_Id
 JOIN Country c ON pc.Country_Id = c.Country_Id
