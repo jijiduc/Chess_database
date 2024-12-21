@@ -7,7 +7,7 @@ SELECT simulate_tournament(
     50000.00            -- prize_pool
 );
 
--- Query 2: Display games from the latest tournament with player countries
+-- Query 2: Display all games from the latest tournament 
 WITH LastTournament AS (
     SELECT Tournament_Id 
     FROM Tournament 
@@ -22,7 +22,10 @@ SELECT
     cw.Name as White_Player_Country,
     pb.First_Name || ' ' || pb.Last_Name as Black_Player,
     cb.Name as Black_Player_Country,
-    o.Name as Opening_Name,
+    CASE 
+        WHEN o.ECO_Code IS NOT NULL THEN o.ECO_Code || ' - ' || o.Name
+        ELSE o.Name
+    END as Opening_Name,
     g.result
 FROM Tournament t
 JOIN Game g ON g.Game_Id IN (

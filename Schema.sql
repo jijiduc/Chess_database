@@ -598,6 +598,7 @@ DECLARE
     total_players INTEGER;
     base_factor DECIMAL;
     sum_of_factors DECIMAL;
+    max_prize_positions INTEGER := 10; -- Limit prize money to top 10
 BEGIN
     -- Validate tournament exists
     IF NOT EXISTS (SELECT 1 FROM Tournament WHERE Tournament_Id = input_tournament_id) THEN
@@ -617,10 +618,10 @@ BEGIN
     -- Calculate base factor for geometric progression
     base_factor := 0.75;
     
-    -- Calculate sum of geometric progression factors
+    -- Calculate sum of geometric progression factors for top 10 positions only
     SELECT SUM(POWER(base_factor, generate_series::DECIMAL - 1))
     INTO sum_of_factors
-    FROM generate_series(1, total_players);
+    FROM generate_series(1, LEAST(max_prize_positions, total_players));
 
     -- Clear existing rankings
     DELETE FROM Tournament_Ranking 
@@ -667,7 +668,7 @@ BEGIN
             ) as tournament_rank
         FROM PlayerStandings
     )
-    -- Insert final rankings with prize distribution
+    -- Insert final rankings with prize distribution (only top 10 get prize money)
     INSERT INTO Tournament_Ranking (
         Tournament_Id, 
         Rank, 
@@ -678,10 +679,14 @@ BEGIN
         input_tournament_id, 
         tournament_rank, 
         Player_Name,
-        ROUND(
-            (total_prize_pool * POWER(base_factor, tournament_rank::DECIMAL - 1)) / sum_of_factors,
-            2
-        ) as Prize_Money_Won
+        CASE 
+            WHEN tournament_rank <= max_prize_positions THEN
+                ROUND(
+                    (total_prize_pool * POWER(base_factor, tournament_rank::DECIMAL - 1)) / sum_of_factors,
+                    2
+                )
+            ELSE 0.00
+        END as Prize_Money_Won
     FROM RankedPlayers
     ORDER BY tournament_rank;
 END;
