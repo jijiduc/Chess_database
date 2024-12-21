@@ -107,24 +107,27 @@ CREATE TABLE Tournament_Players (
     FOREIGN KEY (Player_Id) REFERENCES Player(Player_Id) ON DELETE CASCADE
 );
 
--- Function to calculate win probability based on ELO difference
+-- Function to calculate win probability with increased ELO weight
 CREATE OR REPLACE FUNCTION calculate_win_probability(white_elo INTEGER, black_elo INTEGER) 
 RETURNS NUMERIC AS $$
 DECLARE
     elo_difference NUMERIC;
     win_probability NUMERIC;
+    elo_weight NUMERIC := 2.0; -- Amplification factor for ELO difference
 BEGIN
     -- Calculate ELO difference
     elo_difference := white_elo - black_elo;
     
-    -- Standard ELO probability calculation
-    win_probability := 1 / (1 + POWER(10, -elo_difference / 400.0));
+    -- Modified ELO probability calculation with increased weight
+    -- By multiplying the ELO difference by elo_weight, we make the rating difference
+    -- have a stronger impact on the probability
+    win_probability := 1 / (1 + POWER(10, (-elo_difference * elo_weight) / 400.0));
     
     RETURN win_probability;
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to generate semi-random game result based on ELO ratings
+-- Function to generate game result with reduced randomness
 CREATE OR REPLACE FUNCTION generate_game_result(
     white_player_id INTEGER, 
     black_player_id INTEGER
@@ -133,8 +136,10 @@ DECLARE
     white_elo INTEGER;
     black_elo INTEGER;
     win_probability NUMERIC;
-    random_value NUMERIC;
+    random_factor NUMERIC;
+    adjusted_probability NUMERIC;
     result VARCHAR(7);
+    random_weight NUMERIC := 0.2; -- Weight for random factor (20% influence)
 BEGIN
     -- Retrieve ELO ratings for both players with default of 1500 if null
     SELECT COALESCE(ELO_Rating, 1500) INTO white_elo 
@@ -145,21 +150,27 @@ BEGIN
     FROM Player 
     WHERE Player_Id = black_player_id;
     
-    -- Calculate win probability for white player
+    -- Calculate base win probability for white player
     win_probability := calculate_win_probability(white_elo, black_elo);
     
-    -- Generate random value to determine game outcome
-    random_value := RANDOM();
+    -- Generate random factor with reduced influence
+    random_factor := RANDOM();
     
-    -- Refine result generation to respect ELO probability more closely
-    IF random_value < win_probability THEN
-        -- White player wins
+    -- Combine ELO-based probability with reduced random factor
+    -- Formula: (ELO_weight * win_probability + random_weight * random_factor) / (ELO_weight + random_weight)
+    -- This ensures that ELO has 80% influence while randomness only has 20%
+    adjusted_probability := (win_probability * (1 - random_weight) + random_factor * random_weight);
+    
+    -- Adjusted thresholds for more decisive results
+    -- Draw probability is reduced to 10% of the original window
+    IF adjusted_probability > 0.55 THEN
+        -- White wins (higher threshold for more ELO-based decisions)
         result := '1-0';
-    ELSIF random_value > (1 - win_probability) THEN
-        -- Black player wins
+    ELSIF adjusted_probability < 0.45 THEN
+        -- Black wins (lower threshold for more ELO-based decisions)
         result := '0-1';
     ELSE
-        -- Draw (happens when probabilities are close)
+        -- Draw (narrower window makes draws less common)
         result := '1/2-1/2';
     END IF;
     
