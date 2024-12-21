@@ -327,160 +327,156 @@ DECLARE
     total_players INTEGER;
     unpaired_count INTEGER;
 BEGIN
-    -- First, let's announce which round we're pairing
-    RAISE NOTICE 'Creating pairings for round % of tournament %', current_round, input_tournament_id;
-
-    -- Count how many players are in the tournament
+    -- Get total number of players
     SELECT COUNT(*) INTO total_players
     FROM Tournament_Players
     WHERE Tournament_Id = input_tournament_id;
-    
-    RAISE NOTICE 'Total players: %. Need to create % pairs.', total_players, total_players / 2;
 
     RETURN QUERY
-    WITH PlayerStandings AS (
+    WITH RECURSIVE 
+    -- Calculate current standings
+    PlayerStandings AS (
         SELECT 
             tp.Player_Id,
             p.ELO_Rating,
-            COALESCE(
-                (SELECT COUNT(*) 
-                 FROM Game g
-                 WHERE g.Tournament_Id = input_tournament_id
-                 AND ((g.Player_white_Id = tp.Player_Id AND g.result = '1-0')
-                    OR (g.Player_black_Id = tp.Player_Id AND g.result = '0-1'))), 0
-            ) * 1.0 + 
-            COALESCE(
-                (SELECT COUNT(*) 
-                 FROM Game g
-                 WHERE g.Tournament_Id = input_tournament_id
-                 AND (g.Player_white_Id = tp.Player_Id OR g.Player_black_Id = tp.Player_Id)
-                 AND g.result = '1/2-1/2'), 0
-            ) * 0.5 as score,
-            COALESCE(
-                (SELECT COUNT(*) 
-                 FROM Game g
-                 WHERE g.Tournament_Id = input_tournament_id
-                   AND g.Player_white_Id = tp.Player_Id), 0
-            ) - 
-            COALESCE(
-                (SELECT COUNT(*) 
-                 FROM Game g
-                 WHERE g.Tournament_Id = input_tournament_id
-                   AND g.Player_black_Id = tp.Player_Id), 0
-            ) as color_balance
+            COALESCE(SUM(
+                CASE 
+                    WHEN (g.Player_White_Id = tp.Player_Id AND g.Result = '1-0') OR 
+                         (g.Player_Black_Id = tp.Player_Id AND g.Result = '0-1') 
+                    THEN 1
+                    WHEN g.Result = '1/2-1/2' THEN 0.5
+                    ELSE 0
+                END
+            ), 0) as score,
+            COALESCE(SUM(
+                CASE
+                    WHEN g.Player_White_Id = tp.Player_Id THEN 1
+                    WHEN g.Player_Black_Id = tp.Player_Id THEN -1
+                    ELSE 0
+                END
+            ), 0) as color_balance
         FROM Tournament_Players tp
         JOIN Player p ON tp.Player_Id = p.Player_Id
+        LEFT JOIN Game g ON g.Tournament_Id = input_tournament_id 
+            AND (g.Player_White_Id = tp.Player_Id OR g.Player_Black_Id = tp.Player_Id)
+            AND g.Round_Number < current_round
         WHERE tp.Tournament_Id = input_tournament_id
+        GROUP BY tp.Player_Id, p.ELO_Rating
     ),
-    UnpairedPlayers AS (
-        SELECT 
-            ps.*,
-            ROW_NUMBER() OVER (ORDER BY score DESC, ELO_Rating DESC) as rank
-        FROM PlayerStandings ps
-    ),
-    PossiblePairings AS (
-        SELECT 
-            p1.Player_Id as player1_id,
-            p2.Player_Id as player2_id,
-            p1.score as score1,
-            p2.score as score2,
-            p1.color_balance as balance1,
-            p2.color_balance as balance2,
-            p1.rank as rank1,
-            p2.rank as rank2,
-            ABS(p1.score - p2.score) * 100 +  
-            ABS(p1.rank - p2.rank) * 10 +     
-            CASE 
-                WHEN ABS(p1.color_balance) + ABS(p2.color_balance) > 2 THEN 50 
-                ELSE 0 
-            END +                              
-            RANDOM() as pairing_score          
-        FROM UnpairedPlayers p1
-        CROSS JOIN UnpairedPlayers p2
-        WHERE p1.Player_Id < p2.Player_Id
-        AND NOT EXISTS (
-            SELECT 1 FROM Game g
-            WHERE g.Tournament_Id = input_tournament_id
-            AND ((g.Player_white_Id = p1.Player_Id AND g.Player_black_Id = p2.Player_Id)
-                OR (g.Player_white_Id = p2.Player_Id AND g.Player_black_Id = p1.Player_Id))
-        )
-    ),
-    RankedPairings AS (
-        SELECT 
-            player1_id,
-            player2_id,
-            score1,
-            score2,
-            balance1,
-            balance2,
-            pairing_score,
-            ROW_NUMBER() OVER (
-                ORDER BY pairing_score
-            ) as pairing_rank
-        FROM PossiblePairings
-    ),
-    SelectedPairs AS (
-        SELECT DISTINCT ON (p1)
-            p1,
-            p2
-        FROM (
+    -- Build pairings recursively
+    PairingProcess AS (
+        -- Initial state
+        SELECT
+            ARRAY[]::integer[] as paired_players,
+            ARRAY(
+                SELECT Player_Id 
+                FROM PlayerStandings 
+                ORDER BY score DESC, ELO_Rating DESC
+            ) as available_players,
+            0 as pairs_made
+        
+        UNION ALL
+        
+        -- Recursive part
+        SELECT
+            paired_players || ARRAY[player1.Player_Id, opponent.Player_Id],
+            (
+                SELECT array_agg(x ORDER BY ps.score DESC, ps.ELO_Rating DESC)
+                FROM unnest(available_players) x
+                JOIN PlayerStandings ps ON ps.Player_Id = x
+                WHERE x <> player1.Player_Id AND x <> opponent.Player_Id
+            ),
+            pairs_made + 1
+        FROM PairingProcess pp
+        CROSS JOIN LATERAL (
+            -- Get the first unpaired player
+            SELECT ps1.*
+            FROM unnest(pp.available_players) p1_id
+            JOIN PlayerStandings ps1 ON ps1.Player_Id = p1_id
+            ORDER BY ps1.score DESC, ps1.ELO_Rating DESC
+            LIMIT 1
+        ) player1
+        CROSS JOIN LATERAL (
+            -- Find best opponent
             SELECT 
-                LEAST(player1_id, player2_id) as p1,
-                GREATEST(player1_id, player2_id) as p2,
-                pairing_rank
-            FROM RankedPairings
-        ) sorted_pairs
-        ORDER BY p1, pairing_rank
+                ps2.Player_Id,
+                ps2.score,
+                ps2.color_balance,
+                CASE 
+                    WHEN ps2.score = player1.score THEN 0
+                    WHEN ps2.score = (
+                        SELECT MAX(score) 
+                        FROM PlayerStandings 
+                        WHERE score < player1.score
+                    ) THEN 1
+                    ELSE 2
+                END * 1000 +
+                ABS(player1.color_balance + ps2.color_balance) * 10 +
+                RANDOM() as pairing_score
+            FROM unnest(pp.available_players) p2_id
+            JOIN PlayerStandings ps2 ON ps2.Player_Id = p2_id
+            WHERE p2_id <> player1.Player_Id
+            AND NOT EXISTS (
+                SELECT 1 FROM Game g
+                WHERE g.Tournament_Id = input_tournament_id
+                AND ((g.Player_White_Id = player1.Player_Id AND g.Player_Black_Id = ps2.Player_Id)
+                    OR (g.Player_White_Id = ps2.Player_Id AND g.Player_Black_Id = player1.Player_Id))
+            )
+            ORDER BY pairing_score
+            LIMIT 1
+        ) opponent
+        WHERE array_length(pp.available_players, 1) >= 2
     ),
+    -- Get final set of pairings
     FinalPairings AS (
         SELECT 
-            sp.p1,
-            sp.p2,
+            paired_players[i] as p1_id,
+            paired_players[i+1] as p2_id
+        FROM (
+            SELECT paired_players
+            FROM PairingProcess
+            ORDER BY pairs_made DESC
+            LIMIT 1
+        ) final_state
+        CROSS JOIN generate_series(1, total_players - 1, 2) i
+        WHERE i + 1 <= array_length(final_state.paired_players, 1)
+    ),
+    -- Assign colors based on previous balance
+    ColorAssignedPairs AS (
+        SELECT 
             CASE 
-                WHEN up1.color_balance <= up2.color_balance THEN sp.p1
-                ELSE sp.p2
+                WHEN ps1.color_balance <= ps2.color_balance THEN fp.p1_id 
+                ELSE fp.p2_id 
             END as white_player,
             CASE 
-                WHEN up1.color_balance <= up2.color_balance THEN sp.p2
-                ELSE sp.p1
+                WHEN ps1.color_balance <= ps2.color_balance THEN fp.p2_id 
+                ELSE fp.p1_id 
             END as black_player,
-            -- Add row number for opening selection
             ROW_NUMBER() OVER (ORDER BY RANDOM()) as pair_number
-        FROM SelectedPairs sp
-        JOIN UnpairedPlayers up1 ON up1.Player_Id = sp.p1
-        JOIN UnpairedPlayers up2 ON up2.Player_Id = sp.p2
-    ),
-    RandomOpenings AS (
-        -- Select random openings ensuring uniqueness
-        SELECT 
-            Opening_Id,
-            ROW_NUMBER() OVER (ORDER BY RANDOM()) as opening_number
-        FROM Opening
-        -- Get only the number of openings we need
-        LIMIT (SELECT COUNT(*) FROM FinalPairings)
+        FROM FinalPairings fp
+        JOIN PlayerStandings ps1 ON ps1.Player_Id = fp.p1_id
+        JOIN PlayerStandings ps2 ON ps2.Player_Id = fp.p2_id
     )
-    -- Final selection with unique random openings
+    -- Return final pairings with random openings
     SELECT 
-        fp.white_player,
-        fp.black_player,
-        ro.Opening_Id
-    FROM FinalPairings fp
-    JOIN RandomOpenings ro ON ro.opening_number = fp.pair_number
-    LIMIT total_players / 2;
+        cp.white_player,
+        cp.black_player,
+        o.Opening_Id
+    FROM ColorAssignedPairs cp
+    CROSS JOIN (
+        SELECT Opening_Id, ROW_NUMBER() OVER (ORDER BY RANDOM()) as rn 
+        FROM Opening
+        LIMIT (total_players / 2)
+    ) o
+    WHERE o.rn = cp.pair_number;
 
-    -- Verify that we've paired everyone
+    -- Verify correct number of pairs
     GET DIAGNOSTICS unpaired_count = ROW_COUNT;
     
-    -- Announce how many pairs were created
-    RAISE NOTICE 'Created % pairs for round %', unpaired_count, current_round;
-    
-    -- Verify we have the correct number of pairs
     IF unpaired_count * 2 != total_players THEN
         RAISE EXCEPTION 'Failed to pair all players. Expected % pairs, got %', 
-                       total_players / 2, unpaired_count;
+            total_players / 2, unpaired_count;
     END IF;
-
-    RAISE NOTICE 'Successfully completed pairing for round %', current_round;
 END;
 $$ LANGUAGE plpgsql;
 
