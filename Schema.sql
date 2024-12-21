@@ -319,137 +319,120 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function to pair players for rounds
--- Function to pair players for rounds
 CREATE OR REPLACE FUNCTION pair_players_for_round(
     input_tournament_id INTEGER, 
     current_round INTEGER
 ) RETURNS TABLE(white_player_id INTEGER, black_player_id INTEGER, selected_opening_id INTEGER) AS $$
+DECLARE
+    total_players INTEGER;
+    unpaired_count INTEGER;
 BEGIN
+    -- Get total number of players in tournament
+    SELECT COUNT(*) INTO total_players
+    FROM Tournament_Players
+    WHERE Tournament_Id = input_tournament_id;
+
     RETURN QUERY
     WITH PlayerStandings AS (
+        -- Calculate current standings
         SELECT 
-            tp.Player_Id, 
-            COALESCE(
-                (SELECT COUNT(*) 
-                 FROM Game g
-                 JOIN Game_Players gp ON g.Game_Id = gp.Game_Id
-                 WHERE gp.Player_Id = tp.Player_Id 
-                   AND g.Tournament_Id = input_tournament_id
-                   AND ((g.Player_white_Id = tp.Player_Id AND g.result = '1-0')
-                    OR (g.Player_black_Id = tp.Player_Id AND g.result = '0-1'))), 0) as wins,
-            COALESCE(
-                (SELECT COUNT(*) 
-                 FROM Game g
-                 JOIN Game_Players gp ON g.Game_Id = gp.Game_Id
-                 WHERE gp.Player_Id = tp.Player_Id 
-                   AND g.Tournament_Id = input_tournament_id
-                   AND g.result = '1/2-1/2'), 0) as draws,
-            -- Add color balance tracking
+            tp.Player_Id,
+            p.ELO_Rating, 
             COALESCE(
                 (SELECT COUNT(*) 
                  FROM Game g
                  WHERE g.Tournament_Id = input_tournament_id
-                   AND g.Player_white_Id = tp.Player_Id), 0) as white_games,
+                 AND ((g.Player_white_Id = tp.Player_Id AND g.result = '1-0')
+                    OR (g.Player_black_Id = tp.Player_Id AND g.result = '0-1'))), 0
+            ) as wins,
             COALESCE(
                 (SELECT COUNT(*) 
                  FROM Game g
                  WHERE g.Tournament_Id = input_tournament_id
-                   AND g.Player_black_Id = tp.Player_Id), 0) as black_games
+                 AND (g.Player_white_Id = tp.Player_Id OR g.Player_black_Id = tp.Player_Id)
+                 AND g.result = '1/2-1/2'), 0
+            ) as draws,
+            COALESCE(
+                (SELECT COUNT(*) 
+                 FROM Game g
+                 WHERE g.Tournament_Id = input_tournament_id
+                   AND g.Round_Number = current_round
+                   AND (g.Player_white_Id = tp.Player_Id OR g.Player_black_Id = tp.Player_Id)
+                ), 0
+            ) as is_paired_this_round
         FROM Tournament_Players tp
+        JOIN Player p ON tp.Player_Id = p.Player_Id
         WHERE tp.Tournament_Id = input_tournament_id
     ),
-    RankedPlayers AS (
-        SELECT 
-            Player_Id, 
-            (wins * 1.0 + draws * 0.5) as score,
-            wins,
-            draws,
-            white_games,
-            black_games,
-            ROW_NUMBER() OVER (ORDER BY (wins * 1.0 + draws * 0.5) DESC, Player_Id) as ranking
-        FROM PlayerStandings
-    ),
     UnpairedPlayers AS (
+        -- Get all players not yet paired in this round
         SELECT 
-            r1.Player_Id as potential_white,
-            r2.Player_Id as potential_black,
-            ABS((r1.white_games - r1.black_games) - (r2.black_games - r2.white_games)) as color_balance_score,
-            ROW_NUMBER() OVER (ORDER BY 
-                ABS(r1.score - r2.score),  -- Prefer players with similar scores
-                ABS((r1.white_games - r1.black_games) - (r2.black_games - r2.white_games))  -- Consider color balance
-            ) as pairing_priority
-        FROM RankedPlayers r1
-        CROSS JOIN RankedPlayers r2
-        WHERE r1.Player_Id < r2.Player_Id  -- Ensure each pair is considered only once
-        AND NOT EXISTS (  -- Check if these players haven't played each other yet
-            SELECT 1 
-            FROM Game g
-            WHERE g.Tournament_Id = input_tournament_id
-            AND ((g.Player_white_Id = r1.Player_Id AND g.Player_black_Id = r2.Player_Id)
-                OR (g.Player_white_Id = r2.Player_Id AND g.Player_black_Id = r1.Player_Id))
-        )
+            ps.Player_Id,
+            ps.ELO_Rating,
+            (ps.wins + ps.draws * 0.5) as score,
+            ROW_NUMBER() OVER (ORDER BY (ps.wins + ps.draws * 0.5) DESC, ps.ELO_Rating DESC) as ranking
+        FROM PlayerStandings ps
+        WHERE ps.is_paired_this_round = 0
+    ),
+    PossiblePairs AS (
+        -- Generate all possible pairings between unpaired players
+        SELECT 
+            p1.Player_Id as white_player_id,
+            p2.Player_Id as black_player_id,
+            p1.score as white_score,
+            p2.score as black_score,
+            p1.ranking as white_ranking,
+            p2.ranking as black_ranking,
+            ABS(p1.score - p2.score) as score_diff,
+            -- Add row number to select top pairs
+            ROW_NUMBER() OVER (
+                PARTITION BY p1.Player_Id
+                ORDER BY 
+                    ABS(p1.score - p2.score),      -- Prefer players with similar scores
+                    ABS(p1.ranking - p2.ranking),   -- Then prefer players with similar rankings
+                    RANDOM()                        -- Add randomization for equal cases
+            ) as pair_priority
+        FROM UnpairedPlayers p1
+        CROSS JOIN UnpairedPlayers p2
+        WHERE 
+            p1.Player_Id < p2.Player_Id  -- Avoid self-pairing and duplicates
+            AND NOT EXISTS (
+                -- Check if these players haven't played each other before
+                SELECT 1 FROM Game g
+                WHERE g.Tournament_Id = input_tournament_id
+                AND ((g.Player_white_Id = p1.Player_Id AND g.Player_black_Id = p2.Player_Id)
+                    OR (g.Player_white_Id = p2.Player_Id AND g.Player_black_Id = p1.Player_Id))
+            )
+    ),
+    SelectedPairs AS (
+        -- Select the best pairs
+        SELECT 
+            white_player_id,
+            black_player_id,
+            -- Select a random opening for each pair
+            (SELECT Opening_Id 
+             FROM Opening 
+             OFFSET floor(random() * (SELECT COUNT(*) FROM Opening))
+             LIMIT 1) as selected_opening_id
+        FROM PossiblePairs
+        WHERE pair_priority = 1
+        ORDER BY 
+            white_ranking,  -- Ensure deterministic ordering
+            RANDOM()       -- Add some randomization for fairness
     )
-    SELECT 
-        CASE 
-            WHEN up.potential_white IN (
-                SELECT Player_White_Id 
-                FROM Game 
-                WHERE Tournament_Id = input_tournament_id 
-                AND Round_Number = current_round
-            ) THEN up.potential_black
-            WHEN up.potential_black IN (
-                SELECT Player_White_Id 
-                FROM Game 
-                WHERE Tournament_Id = input_tournament_id 
-                AND Round_Number = current_round
-            ) THEN up.potential_white
-            WHEN (
-                SELECT COUNT(*) 
-                FROM Game 
-                WHERE Tournament_Id = input_tournament_id 
-                AND Round_Number = current_round 
-                AND Player_White_Id = up.potential_white
-            ) > 0 THEN up.potential_black
-            ELSE up.potential_white
-        END as white_player,
-        CASE 
-            WHEN up.potential_white IN (
-                SELECT Player_White_Id 
-                FROM Game 
-                WHERE Tournament_Id = input_tournament_id 
-                AND Round_Number = current_round
-            ) THEN up.potential_white
-            WHEN up.potential_black IN (
-                SELECT Player_White_Id 
-                FROM Game 
-                WHERE Tournament_Id = input_tournament_id 
-                AND Round_Number = current_round
-            ) THEN up.potential_black
-            WHEN (
-                SELECT COUNT(*) 
-                FROM Game 
-                WHERE Tournament_Id = input_tournament_id 
-                AND Round_Number = current_round 
-                AND Player_White_Id = up.potential_white
-            ) > 0 THEN up.potential_white
-            ELSE up.potential_black
-        END as black_player,
-        (SELECT Opening_Id FROM Opening ORDER BY RANDOM() LIMIT 1) as opening_id
-    FROM UnpairedPlayers up
-    WHERE NOT EXISTS (  -- Ensure neither player is already paired in this round
-        SELECT 1 
-        FROM Game g
-        WHERE g.Tournament_Id = input_tournament_id
-        AND g.Round_Number = current_round
-        AND (g.Player_white_Id IN (up.potential_white, up.potential_black)
-            OR g.Player_black_Id IN (up.potential_white, up.potential_black))
-    )
-    ORDER BY pairing_priority
-    LIMIT ((SELECT COUNT(*) FROM Tournament_Players WHERE Tournament_Id = input_tournament_id) / 2);
+    SELECT * FROM SelectedPairs;
+
+    -- Verify that we've paired everyone
+    GET DIAGNOSTICS unpaired_count = ROW_COUNT;
+    
+    IF unpaired_count * 2 != total_players THEN
+        RAISE EXCEPTION 'Failed to pair all players. Expected % pairs, got %', 
+                       total_players / 2, unpaired_count;
+    END IF;
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to create tournament games with results
+-- Modified create_tournament_games_with_results function with strict validation
 CREATE OR REPLACE FUNCTION create_tournament_games_with_results(
     input_tournament_id INTEGER,
     current_round INTEGER
@@ -459,52 +442,65 @@ DECLARE
     game_result VARCHAR(7);
     new_game_id INTEGER;
     game_number INTEGER := 1;
+    total_players INTEGER;
+    created_games INTEGER := 0;
 BEGIN
-    -- Validate tournament exists
-    IF NOT EXISTS (SELECT 1 FROM Tournament WHERE Tournament_Id = input_tournament_id) THEN
-        RAISE EXCEPTION 'Tournament with ID % does not exist', input_tournament_id;
-    END IF;
+    -- Get total number of players
+    SELECT COUNT(*) INTO total_players
+    FROM Tournament_Players
+    WHERE Tournament_Id = input_tournament_id;
 
-    -- Create games for paired players
+    -- Verify no games exist for this round
+    DELETE FROM Game 
+    WHERE Tournament_Id = input_tournament_id 
+    AND Round_Number = current_round;
+
+    -- Create games for all pairs
     FOR pair_record IN 
         SELECT * FROM pair_players_for_round(input_tournament_id, current_round)
     LOOP
-        -- Generate game result based on ELO ratings
+        -- Generate game result
         game_result := generate_game_result(
             pair_record.white_player_id,
             pair_record.black_player_id
         );
         
-        -- Insert game with round numbering and random opening
+        -- Insert game
         INSERT INTO Game (
-            Game_Date, 
+            Game_Date,
             Tournament_Id,
             Round_Number,
             Round_Game_Number,
-            Player_White_Id, 
-            Player_Black_Id, 
-            Result, 
+            Player_White_Id,
+            Player_Black_Id,
+            Result,
             Opening_Id
         ) VALUES (
             CURRENT_TIMESTAMP,
             input_tournament_id,
             current_round,
             game_number,
-            pair_record.white_player_id, 
-            pair_record.black_player_id, 
+            pair_record.white_player_id,
+            pair_record.black_player_id,
             game_result,
-            (SELECT Opening_Id FROM Opening ORDER BY RANDOM() LIMIT 1)
+            pair_record.selected_opening_id
         ) RETURNING Game_Id INTO new_game_id;
 
-        -- Insert players into Game_Players table
+        -- Insert players into Game_Players
         INSERT INTO Game_Players (Game_Id, Player_Id)
         VALUES 
             (new_game_id, pair_record.white_player_id),
             (new_game_id, pair_record.black_player_id);
-            
-        -- Increment game number for next game in this round
+
         game_number := game_number + 1;
+        created_games := created_games + 1;
     END LOOP;
+
+    -- Final verification
+    IF created_games != total_players / 2 THEN
+        RAISE EXCEPTION 'Failed to create all games. Expected % games, created %', 
+                       total_players / 2, created_games;
+    END IF;
 END;
 $$ LANGUAGE plpgsql;
 

@@ -16,16 +16,28 @@ This project focuses on organizing and managing data related to chess players, c
 
 ## System Requirements
 
+### **Title management**
+
+- Details of titles
+  - Title code
+  - Title name
+  - Title description
+  - Elo necessary for title
+
 ### **Players Management**
 
 - Information tracked:
   - First Name
   - Last Name
   - Age
-  - Title (e.g., GM, IM, FM, etc.)
   - ELO Rating
-  - Nationality
   - Playing styles
+
+### **Country management**
+
+- Details for countries management
+  - Country name
+  - Start date (when the player started representing this country)
 
 ### **Opening Management**
 
@@ -39,7 +51,6 @@ This project focuses on organizing and managing data related to chess players, c
 - Details of chess clubs:
   - Club Name
   - Location
-  - Associated Players
 
 ### **Games Management**
 
@@ -75,17 +86,19 @@ Chess Database
 
 ### Organization and Purpose
 
-The Chess Database provides an organized structure to store and query chess-related data. It assists players, clubs, and tournament organizers by offering:
+The Chess Database provides an organized structure to store and query chess-related data. It's designed to create tournaments and keep records of results:
 
 - A clear record of players and their achievements.
 - A historical log of tournaments and games.
 - Insights into player performance trends.
 
-### Database Normalization Analysis
+---
+
+## Database Normalization Analysis
 
 The database is designed to be in Third Normal Form (3NF). Here's the analysis of how it meets the normalization requirements:
 
-#### First Normal Form (1NF)
+### First Normal Form (1NF)
 
 - All tables have a primary key
   - Player table has atomic columns for First_Name, Last_Name, Age, etc.
@@ -94,7 +107,7 @@ The database is designed to be in Third Normal Form (3NF). Here's the analysis o
 - No repeating groups
   - Multiple player styles are handled in a separate Player_Styles table
 
-#### Second Normal Form (2NF)
+### Second Normal Form (2NF)
 
 Meets 1NF requirements and no partial dependencies on the primary key
 Examples:
@@ -103,7 +116,7 @@ Examples:
 - Tournament_Players table only contains Tournament_Id and Player_Id relationships
 - Club_Players table maintains only the club-player relationships
 
-#### Third Normal Form (3NF)
+### Third Normal Form (3NF)
 
 Meets 2NF requirements and no transitive dependencies
 Examples:
@@ -114,7 +127,7 @@ Examples:
 - Game details are normalized with round numbers and game numbers within rounds
 - Club information is separated from player details
 
-#### Key Design Decisions for 3NF
+### Key Design Decisions for 3NF
 
 Player-Related Information:
 
@@ -140,29 +153,102 @@ Referential Integrity:
 - Cascade deletions where appropriate
 - Null handling for optional relationships
 
+---
+
+## Database Indexes
+
+The following describes the indexes implemented in the chess database to optimize query performance.
+
+### Player Index
+
+```CREATE INDEX idx_player ON Player(ELO_Rating);```
+
+This index optimizes queries that filter or sort players by their ELO rating. It's particularly useful for:
+
+- Tournament pairing systems that need to match players of similar strength
+- Ranking queries that sort players by rating
+- Statistics and analytics involving player ratings
+
+### Tournament Index
+
+```CREATE INDEX idx_tournament ON Tournament(Tournament_Id);```
+
+Improves performance for:
+
+- Looking up specific tournaments
+- Joining tournament data with games and players
+- Tournament-specific statistics and results
+
+### Game Players Index
+
+```CREATE INDEX idx_game ON Game_Players(Player_Id, Game_Id);```
+
+Enhances performance for:
+
+- Finding all games played by a specific player
+- Player performance analysis
+
+### Player Country Indexes
+
+```CREATE INDEX idx_player_country_player ON Player_Country(Player_Id);```
+
+```CREATE INDEX idx_player_country_country ON Player_Country(Country_Id);```
+
+These indexes improve performance for:
+
+- Finding all players from a specific country
+- Determining a player's country/nationality
+- Country-based statistics and filters
+
+### Country Name Index
+
+```CREATE INDEX idx_country_name ON Country(Name);```
+
+Optimizes:
+
+- Looking up countries by name
+- Country-based filtering and grouping
+- Geographic analysis of players and tournaments
+
+### Index Usage in Swiss Pairing System
+
+The indexes play a crucial role in the Swiss pairing system:
+
+- The idx_player index helps quickly sort and group players by rating within score brackets
+- The idx_game index efficiently checks previous pairings to avoid rematches
+- The tournament index helps retrieve all games and standings for the current tournament quickly
+
+These indexes significantly improve the performance of:
+
+- Score calculations
+- Previous pairing checks
+- Color balance determinations
+- Player grouping by score brackets
+
 ### Features
 
 - A scheduling system for tournaments, with incremental pairing round by round and final standings.
 - A ranking feature for tournament results.
 - Openings are randomly selected for each game
-- Game Numbering System : Each game in a tournament round has a unique identifier in format: Round_Number.Round_Game_Number.
+- Game Numbering System in format: Round_Number.Round_Game_Number
+- Tiebreaks classification using Bucholz and Performance metrics
 
 ---
 
 ## Challenges and Scope
 
-### Expected Challenges
+### Challenges encountered
 
 - Designing relationships between players, games, and tournaments effectively.
 - Normalizing data while retaining query performance.
+- Disigning working functions to simulate a tournanement in swiss format
 
 ### Scope of Modeling
 
 - **Modeled:**
   - Players, games, tournaments, and performance tracking.
-  - Club affiliations and tournament results.
-  - Financial details (e.g., prize payouts).
-  - Scheduling systems for tournaments or games.
+  - Financial details (prize money payouts).
+  - Scheduling systems for tournaments in a swiss manner.
 - **Not Modeled:**
   - A detailed moves database for chess games.
 
@@ -174,4 +260,4 @@ As chess enthusiasts, this project combines personal interest with practical dat
 
 ### Data Availability
 
-Initial data will be simulated or sourced from freely available chess tournament records and player databases online, such as TWIC. If necessary, generated data will be used to populate the tables.
+Populating datas for the players and clubs have been generated based on reality. The opening datas are taken from the international ECO chess opening classification.
