@@ -1,9 +1,9 @@
--- Query 1: Create a tournament with new parameters
+-- Query 1: Create a tournament
 SELECT simulate_tournament(
     'Open de Paris',     -- tournament_name
     'Paris',             -- tournament_location
-    8,                   -- number_of_players
-    3,                   -- number_of_rounds (must be odd)
+    34,                   -- number_of_players
+    9,                   -- number_of_rounds (must be odd)
     50000.00            -- prize_pool
 );
 
@@ -43,13 +43,39 @@ JOIN Country cb ON pcb.Country_Id = cb.Country_Id
 WHERE t.Tournament_Id = (SELECT Tournament_Id FROM LastTournament)
 ORDER BY g.Round_Number, g.Round_Game_Number;
 
--- Query: Retrieve tournament rankings with player countries and titles
+-- Query 3 : Retrieve all tournament rankings
+WITH PlayerScores AS (
+    SELECT 
+        tp.Tournament_Id,
+        tp.Player_Id,
+        COALESCE(
+            (SELECT COUNT(*) 
+            FROM Game g
+            WHERE g.Tournament_Id = tp.Tournament_Id
+            AND ((g.Player_White_Id = tp.Player_Id AND g.Result = '1-0')
+                OR (g.Player_Black_Id = tp.Player_Id AND g.Result = '0-1'))), 0
+        ) as wins,
+        COALESCE(
+            (SELECT COUNT(*) 
+            FROM Game g
+            WHERE g.Tournament_Id = tp.Tournament_Id
+            AND (g.Player_White_Id = tp.Player_Id OR g.Player_Black_Id = tp.Player_Id)
+            AND g.Result = '1/2-1/2'), 0
+        ) as draws,
+        calculate_buchholz_score(tp.Tournament_Id, tp.Player_Id) as buchholz_score,
+        calculate_performance_rating(tp.Tournament_Id, tp.Player_Id) as performance_rating
+    FROM Tournament_Players tp
+)
 SELECT 
     t.Name AS "Tournament Name",
     tr.Player_Name AS "Player Name",
+    p.ELO_Rating AS "ELO",
     ti.Title_Code AS "Title",
     c.Name AS "Country",
     tr.Rank AS "Rank",
+    (ps.wins + ps.draws * 0.5)::DECIMAL(4,1) AS "Total Score",
+    ps.buchholz_score::DECIMAL(4,1) AS "Buchholz Score",
+    ROUND(ps.performance_rating::DECIMAL) AS "Performance Rating",
     tr.Prize_Money_Won AS "Prize Money"
 FROM 
     Tournament_Ranking tr
@@ -57,6 +83,9 @@ JOIN
     Tournament t ON tr.Tournament_Id = t.Tournament_Id
 -- Join to get player information
 JOIN Player p ON CONCAT(p.First_Name, ' ', p.Last_Name) = tr.Player_Name
+-- Join to get scores and departage information
+JOIN PlayerScores ps ON ps.Tournament_Id = tr.Tournament_Id 
+    AND ps.Player_Id = p.Player_Id
 -- Join to get title information
 JOIN Title ti ON p.Title_Id = ti.Title_Id
 -- Join to get country information
@@ -65,5 +94,5 @@ JOIN Country c ON pc.Country_Id = c.Country_Id
 WHERE 
     tr.Rank IS NOT NULL -- Only include players with valid ranks
 ORDER BY 
-    t.Name ASC, -- Order by tournament name
-    tr.Rank ASC; -- Within each tournament, order by rank
+    t.Name ASC,         -- Order by tournament name
+    tr.Rank ASC;        -- Within each tournament, order by rank

@@ -319,6 +319,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function to pair players for rounds
+-- Function to pair players for rounds
 CREATE OR REPLACE FUNCTION pair_players_for_round(
     input_tournament_id INTEGER, 
     current_round INTEGER
@@ -333,13 +334,7 @@ BEGIN
                  FROM Game g
                  JOIN Game_Players gp ON g.Game_Id = gp.Game_Id
                  WHERE gp.Player_Id = tp.Player_Id 
-                   AND g.Game_Id IN (
-                       SELECT DISTINCT g2.Game_Id 
-                       FROM Game g2
-                       JOIN Game_Players gp2 ON g2.Game_Id = gp2.Game_Id
-                       JOIN Tournament_Players tp2 ON gp2.Player_Id = tp2.Player_Id
-                       WHERE tp2.Tournament_Id = input_tournament_id
-                   )
+                   AND g.Tournament_Id = input_tournament_id
                    AND ((g.Player_white_Id = tp.Player_Id AND g.result = '1-0')
                     OR (g.Player_black_Id = tp.Player_Id AND g.result = '0-1'))), 0) as wins,
             COALESCE(
@@ -347,14 +342,19 @@ BEGIN
                  FROM Game g
                  JOIN Game_Players gp ON g.Game_Id = gp.Game_Id
                  WHERE gp.Player_Id = tp.Player_Id 
-                   AND g.Game_Id IN (
-                       SELECT DISTINCT g2.Game_Id 
-                       FROM Game g2
-                       JOIN Game_Players gp2 ON g2.Game_Id = gp2.Game_Id
-                       JOIN Tournament_Players tp2 ON gp2.Player_Id = tp2.Player_Id
-                       WHERE tp2.Tournament_Id = input_tournament_id
-                   )
-                   AND g.result = '1/2-1/2'), 0) as draws
+                   AND g.Tournament_Id = input_tournament_id
+                   AND g.result = '1/2-1/2'), 0) as draws,
+            -- Add color balance tracking
+            COALESCE(
+                (SELECT COUNT(*) 
+                 FROM Game g
+                 WHERE g.Tournament_Id = input_tournament_id
+                   AND g.Player_white_Id = tp.Player_Id), 0) as white_games,
+            COALESCE(
+                (SELECT COUNT(*) 
+                 FROM Game g
+                 WHERE g.Tournament_Id = input_tournament_id
+                   AND g.Player_black_Id = tp.Player_Id), 0) as black_games
         FROM Tournament_Players tp
         WHERE tp.Tournament_Id = input_tournament_id
     ),
@@ -364,38 +364,88 @@ BEGIN
             (wins * 1.0 + draws * 0.5) as score,
             wins,
             draws,
+            white_games,
+            black_games,
             ROW_NUMBER() OVER (ORDER BY (wins * 1.0 + draws * 0.5) DESC, Player_Id) as ranking
         FROM PlayerStandings
     ),
-    PotentialPairings AS (
+    UnpairedPlayers AS (
         SELECT 
-            r1.Player_Id as white_player,
-            r2.Player_Id as black_player,
-            (SELECT o.Opening_Id FROM Opening o ORDER BY RANDOM() LIMIT 1) as opening,
-            ROW_NUMBER() OVER () as pair_number
+            r1.Player_Id as potential_white,
+            r2.Player_Id as potential_black,
+            ABS((r1.white_games - r1.black_games) - (r2.black_games - r2.white_games)) as color_balance_score,
+            ROW_NUMBER() OVER (ORDER BY 
+                ABS(r1.score - r2.score),  -- Prefer players with similar scores
+                ABS((r1.white_games - r1.black_games) - (r2.black_games - r2.white_games))  -- Consider color balance
+            ) as pairing_priority
         FROM RankedPlayers r1
-        JOIN RankedPlayers r2 ON r1.ranking < r2.ranking
-        WHERE MOD(r1.ranking, 2) = 1 
-          AND r2.ranking = r1.ranking + 1
-          AND NOT EXISTS (
-              SELECT 1 
-              FROM Game g
-              WHERE (g.Player_white_Id = r1.Player_Id AND g.Player_black_Id = r2.Player_Id)
-                 OR (g.Player_white_Id = r2.Player_Id AND g.Player_black_Id = r1.Player_Id)
-                 AND g.Game_Id IN (
-                     SELECT DISTINCT g2.Game_Id 
-                     FROM Game g2
-                     JOIN Game_Players gp2 ON g2.Game_Id = gp2.Game_Id
-                     JOIN Tournament_Players tp2 ON gp2.Player_Id = tp2.Player_Id
-                     WHERE tp2.Tournament_Id = input_tournament_id
-                 )
-          )
+        CROSS JOIN RankedPlayers r2
+        WHERE r1.Player_Id < r2.Player_Id  -- Ensure each pair is considered only once
+        AND NOT EXISTS (  -- Check if these players haven't played each other yet
+            SELECT 1 
+            FROM Game g
+            WHERE g.Tournament_Id = input_tournament_id
+            AND ((g.Player_white_Id = r1.Player_Id AND g.Player_black_Id = r2.Player_Id)
+                OR (g.Player_white_Id = r2.Player_Id AND g.Player_black_Id = r1.Player_Id))
+        )
     )
     SELECT 
-        white_player,
-        black_player,
-        opening
-    FROM PotentialPairings;
+        CASE 
+            WHEN up.potential_white IN (
+                SELECT Player_White_Id 
+                FROM Game 
+                WHERE Tournament_Id = input_tournament_id 
+                AND Round_Number = current_round
+            ) THEN up.potential_black
+            WHEN up.potential_black IN (
+                SELECT Player_White_Id 
+                FROM Game 
+                WHERE Tournament_Id = input_tournament_id 
+                AND Round_Number = current_round
+            ) THEN up.potential_white
+            WHEN (
+                SELECT COUNT(*) 
+                FROM Game 
+                WHERE Tournament_Id = input_tournament_id 
+                AND Round_Number = current_round 
+                AND Player_White_Id = up.potential_white
+            ) > 0 THEN up.potential_black
+            ELSE up.potential_white
+        END as white_player,
+        CASE 
+            WHEN up.potential_white IN (
+                SELECT Player_White_Id 
+                FROM Game 
+                WHERE Tournament_Id = input_tournament_id 
+                AND Round_Number = current_round
+            ) THEN up.potential_white
+            WHEN up.potential_black IN (
+                SELECT Player_White_Id 
+                FROM Game 
+                WHERE Tournament_Id = input_tournament_id 
+                AND Round_Number = current_round
+            ) THEN up.potential_black
+            WHEN (
+                SELECT COUNT(*) 
+                FROM Game 
+                WHERE Tournament_Id = input_tournament_id 
+                AND Round_Number = current_round 
+                AND Player_White_Id = up.potential_white
+            ) > 0 THEN up.potential_white
+            ELSE up.potential_black
+        END as black_player,
+        (SELECT Opening_Id FROM Opening ORDER BY RANDOM() LIMIT 1) as opening_id
+    FROM UnpairedPlayers up
+    WHERE NOT EXISTS (  -- Ensure neither player is already paired in this round
+        SELECT 1 
+        FROM Game g
+        WHERE g.Tournament_Id = input_tournament_id
+        AND g.Round_Number = current_round
+        AND (g.Player_white_Id IN (up.potential_white, up.potential_black)
+            OR g.Player_black_Id IN (up.potential_white, up.potential_black))
+    )
+    ORDER BY pairing_priority
+    LIMIT ((SELECT COUNT(*) FROM Tournament_Players WHERE Tournament_Id = input_tournament_id) / 2);
 END;
 $$ LANGUAGE plpgsql;
 
@@ -458,6 +508,90 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Function to calculate Buchholz score for a player in a tournament
+CREATE OR REPLACE FUNCTION calculate_buchholz_score(
+    input_tournament_id INTEGER,
+    input_player_id INTEGER
+) RETURNS DECIMAL AS $$
+DECLARE
+    buchholz_score DECIMAL;
+BEGIN
+    -- Calculate Buchholz score (sum of opponents' scores)
+    SELECT COALESCE(SUM(opponent_score), 0) INTO buchholz_score
+    FROM (
+        SELECT 
+            CASE 
+                WHEN g.Player_White_Id = input_player_id THEN g.Player_Black_Id
+                ELSE g.Player_White_Id
+            END as opponent_id
+        FROM Game g
+        WHERE g.Tournament_Id = input_tournament_id
+        AND (g.Player_White_Id = input_player_id OR g.Player_Black_Id = input_player_id)
+    ) opponents
+    JOIN (
+        SELECT 
+            tp.Player_Id,
+            (
+                COUNT(CASE WHEN 
+                    (g.Player_White_Id = tp.Player_Id AND g.Result = '1-0') OR
+                    (g.Player_Black_Id = tp.Player_Id AND g.Result = '0-1')
+                THEN 1 END)
+                +
+                COUNT(CASE WHEN g.Result = '1/2-1/2' THEN 1 END) * 0.5
+            ) as opponent_score
+        FROM Tournament_Players tp
+        LEFT JOIN Game g ON (g.Player_White_Id = tp.Player_Id OR g.Player_Black_Id = tp.Player_Id)
+            AND g.Tournament_Id = input_tournament_id
+        WHERE tp.Tournament_Id = input_tournament_id
+        GROUP BY tp.Player_Id
+    ) scores ON scores.Player_Id = opponents.opponent_id;
+
+    RETURN buchholz_score;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to calculate performance rating based on opponents' ELO
+CREATE OR REPLACE FUNCTION calculate_performance_rating(
+    input_tournament_id INTEGER,
+    input_player_id INTEGER
+) RETURNS DECIMAL AS $$
+DECLARE
+    performance_rating DECIMAL;
+BEGIN
+    SELECT 
+        COALESCE(
+            AVG(
+                CASE WHEN g.Player_White_Id = input_player_id THEN
+                    CASE 
+                        WHEN g.Result = '1-0' THEN p.ELO_Rating + 400
+                        WHEN g.Result = '0-1' THEN p.ELO_Rating - 400
+                        ELSE p.ELO_Rating
+                    END
+                ELSE
+                    CASE 
+                        WHEN g.Result = '0-1' THEN p.ELO_Rating + 400
+                        WHEN g.Result = '1-0' THEN p.ELO_Rating - 400
+                        ELSE p.ELO_Rating
+                    END
+                END
+            ),
+            0
+        ) INTO performance_rating
+    FROM Game g
+    JOIN Player p ON (
+        CASE 
+            WHEN g.Player_White_Id = input_player_id THEN g.Player_Black_Id
+            ELSE g.Player_White_Id
+        END = p.Player_Id
+    )
+    WHERE g.Tournament_Id = input_tournament_id
+    AND (g.Player_White_Id = input_player_id OR g.Player_Black_Id = input_player_id);
+
+    RETURN performance_rating;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Updated finalize_tournament_rankings function with Buchholz and performance rating
 CREATE OR REPLACE FUNCTION finalize_tournament_rankings(input_tournament_id INTEGER) RETURNS VOID AS $$
 DECLARE
     total_prize_pool DECIMAL(15,2);
@@ -480,41 +614,39 @@ BEGIN
     FROM Tournament_Players
     WHERE Tournament_Id = input_tournament_id;
 
-    -- Calculate base factor for geometric progression (0.75 provides a good distribution)
+    -- Calculate base factor for geometric progression
     base_factor := 0.75;
     
-    -- Calculate sum of geometric progression factors for normalization
-    -- Sum = 1 + r + r^2 + r^3 + ... + r^(n-1) where r is base_factor and n is total_players
+    -- Calculate sum of geometric progression factors
     SELECT SUM(POWER(base_factor, generate_series::DECIMAL - 1))
     INTO sum_of_factors
     FROM generate_series(1, total_players);
 
-    -- Clear any existing rankings for this tournament
+    -- Clear existing rankings
     DELETE FROM Tournament_Ranking 
     WHERE Tournament_Id = input_tournament_id;
 
-    -- Calculate final rankings based on performance
+    -- Calculate final rankings with Buchholz and performance rating tiebreakers
     WITH PlayerStandings AS (
         SELECT 
             tp.Player_Id, 
             p.First_Name || ' ' || p.Last_Name as Player_Name,
             COALESCE(
                 (SELECT COUNT(*) 
-                 FROM Tournament_Players tp_inner
-                 JOIN Game_Players gp ON tp_inner.Player_Id = gp.Player_Id
-                 JOIN Game g ON gp.Game_Id = g.Game_Id
-                 WHERE tp_inner.Player_Id = tp.Player_Id 
-                   AND tp_inner.Tournament_Id = input_tournament_id
-                   AND ((g.Player_white_Id = tp.Player_Id AND g.result = '1-0')
-                    OR (g.Player_black_Id = tp.Player_Id AND g.result = '0-1'))), 0) as wins,
+                FROM Game g
+                WHERE g.Tournament_Id = input_tournament_id
+                AND ((g.Player_White_Id = tp.Player_Id AND g.Result = '1-0')
+                    OR (g.Player_Black_Id = tp.Player_Id AND g.Result = '0-1'))), 0
+            ) as wins,
             COALESCE(
                 (SELECT COUNT(*) 
-                 FROM Tournament_Players tp_inner
-                 JOIN Game_Players gp ON tp_inner.Player_Id = gp.Player_Id
-                 JOIN Game g ON gp.Game_Id = g.Game_Id
-                 WHERE tp_inner.Player_Id = tp.Player_Id 
-                   AND tp_inner.Tournament_Id = input_tournament_id
-                   AND g.result = '1/2-1/2'), 0) as draws
+                FROM Game g
+                WHERE g.Tournament_Id = input_tournament_id
+                AND (g.Player_White_Id = tp.Player_Id OR g.Player_Black_Id = tp.Player_Id)
+                AND g.Result = '1/2-1/2'), 0
+            ) as draws,
+            calculate_buchholz_score(input_tournament_id, tp.Player_Id) as buchholz_score,
+            calculate_performance_rating(input_tournament_id, tp.Player_Id) as performance_rating
         FROM Tournament_Players tp
         JOIN Player p ON tp.Player_Id = p.Player_Id
         WHERE tp.Tournament_Id = input_tournament_id
@@ -524,14 +656,18 @@ BEGIN
             Player_Id, 
             Player_Name,
             (wins * 1.0 + draws * 0.5) as total_score,
+            buchholz_score,
+            performance_rating,
             ROW_NUMBER() OVER (
                 ORDER BY 
-                    (wins * 1.0 + draws * 0.5) DESC, 
-                    Player_Id
+                    (wins * 1.0 + draws * 0.5) DESC,  -- Primary sort: total score
+                    buchholz_score DESC,              -- First tiebreaker: Buchholz score
+                    performance_rating DESC,          -- Second tiebreaker: Performance rating
+                    Player_Id                         -- Final tiebreaker: Player ID
             ) as tournament_rank
         FROM PlayerStandings
     )
-    -- Insert rankings with progressive prize money distribution
+    -- Insert final rankings with prize distribution
     INSERT INTO Tournament_Ranking (
         Tournament_Id, 
         Rank, 
