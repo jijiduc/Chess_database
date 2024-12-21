@@ -114,7 +114,7 @@ Examples:
 - Game details are normalized with round numbers and game numbers within rounds
 - Club information is separated from player details
 
-#### Key Design Decisions for 3NF:
+#### Key Design Decisions for 3NF
 
 Player-Related Information:
 

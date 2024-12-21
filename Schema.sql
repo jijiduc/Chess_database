@@ -42,7 +42,12 @@ CREATE TABLE Opening (
     Name VARCHAR(100) NOT NULL,
     ECO_Code VARCHAR(3),
     Agressiveness BOOLEAN,
-    CONSTRAINT Chk_ECO CHECK(LENGTH(ECO_Code) IN (2, 3))
+    CONSTRAINT Chk_ECO CHECK(
+        ECO_Code IS NULL OR (
+            LENGTH(ECO_Code) IN (2, 3) AND
+            ECO_Code ~ '^[A-E][0-9]{1,2}$'
+        )
+    )
 );
 
 -- Table to store club details (No dependencies)
