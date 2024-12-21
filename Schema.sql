@@ -1,43 +1,41 @@
-
-
--- Table to store player details
+-- Table to store player details (No dependencies)
 CREATE TABLE Player (
     Player_Id SERIAL PRIMARY KEY,
-    First_Name VARCHAR(50) NOT NULL, -- Maximum 50 characters for the first name
-    Last_Name VARCHAR(50) NOT NULL,  -- Maximum 50 characters for the last name
+    First_Name VARCHAR(50) NOT NULL,
+    Last_Name VARCHAR(50) NOT NULL,
     Age INTEGER,
-    Title VARCHAR(10),               -- Maximum 10 characters (e.g., GM, IM, etc.)
+    Title VARCHAR(10),
     ELO_Rating INTEGER,
     CONSTRAINT Chk_ELO CHECK(ELO_Rating >= 0),
     CONSTRAINT Chk_Age CHECK(Age BETWEEN 0 AND 99),
     CONSTRAINT Chk_Title CHECK(Title IN ('GM', 'WGM', 'IM', 'WIM', 'FM', 'WFM', 'NM', 'CM', 'WCM', 'WNM') OR Title IS NULL)
 );
 
--- Table to store player nationalities
+-- Table to store player nationalities (Depends on Player)
 CREATE TABLE Player_Nationality (
     Player_Id INTEGER,
-    Nationality VARCHAR(50),         -- Maximum 50 characters for nationality
+    Nationality VARCHAR(50),
     PRIMARY KEY (Player_Id, Nationality),
     FOREIGN KEY (Player_Id) REFERENCES Player(Player_Id)
 );
 
--- Table to store chess openings
+-- Table to store chess openings (No dependencies)
 CREATE TABLE Opening (
     Opening_Id SERIAL PRIMARY KEY,
-    Name VARCHAR(100) NOT NULL,      -- Maximum 100 characters for opening name
-    ECO_Code VARCHAR(3),             -- ECO code is typically 2-3 characters
+    Name VARCHAR(100) NOT NULL,
+    ECO_Code VARCHAR(3),
     Agressiveness BOOLEAN,
     CONSTRAINT Chk_ECO CHECK(LENGTH(ECO_Code) IN (2, 3))
 );
 
--- Table to store club details
+-- Table to store club details (No dependencies)
 CREATE TABLE Club (
     Club_Id SERIAL PRIMARY KEY,
-    Club_Name VARCHAR(100) UNIQUE,   -- Maximum 100 characters for club name
-    Location VARCHAR(100)            -- Maximum 100 characters for location
+    Club_Name VARCHAR(100) UNIQUE,
+    Location VARCHAR(100)
 );
 
--- Table to store styles associated with players
+-- Table to store styles associated with players (Depends on Player and Opening)
 CREATE TABLE Player_Styles (
     Player_Id INTEGER,
     Opening_Id INTEGER,
@@ -46,7 +44,7 @@ CREATE TABLE Player_Styles (
     FOREIGN KEY (Opening_Id) REFERENCES Opening(Opening_Id) ON DELETE CASCADE
 );
 
--- Table to store player-club associations
+-- Table to store player-club associations (Depends on Club and Player)
 CREATE TABLE Club_Players (
     Club_Id INTEGER,
     Player_Id INTEGER,
@@ -55,7 +53,18 @@ CREATE TABLE Club_Players (
     FOREIGN KEY (Player_Id) REFERENCES Player(Player_Id) ON DELETE CASCADE
 );
 
--- Table to store chess game details
+-- Table to store tournament details (No dependencies)
+CREATE TABLE Tournament (
+    Tournament_Id SERIAL PRIMARY KEY,
+    Name VARCHAR(100) UNIQUE,
+    Location VARCHAR(100),
+    Total_Round_Number INT NOT NULL,
+    Game_Date TIMESTAMP,
+    Format VARCHAR(50),
+    Prize_Pool DECIMAL(15, 2)
+);
+
+-- Table to store chess game details (Depends on Tournament, Player, and Opening)
 CREATE TABLE Game (
     Game_Id SERIAL PRIMARY KEY,
     Game_Date TIMESTAMP,
@@ -67,12 +76,16 @@ CREATE TABLE Game (
     Result VARCHAR(7) NOT NULL,
     Opening_Id INTEGER,
     CONSTRAINT Chk_Result CHECK (Result IN ('1-0', '0-1', '1/2-1/2')),
+    CONSTRAINT Chk_Round_Number CHECK (Round_Number > 0),
+    CONSTRAINT Chk_Round_Game_Number CHECK (Round_Game_Number > 0),
     CONSTRAINT Unique_Round_Game UNIQUE (Tournament_Id, Round_Number, Round_Game_Number),
     FOREIGN KEY (Opening_Id) REFERENCES Opening(Opening_Id) ON DELETE SET NULL,
-    FOREIGN KEY (Tournament_Id) REFERENCES Tournament(Tournament_Id) ON DELETE CASCADE
+    FOREIGN KEY (Tournament_Id) REFERENCES Tournament(Tournament_Id) ON DELETE CASCADE,
+    FOREIGN KEY (Player_White_Id) REFERENCES Player(Player_Id),
+    FOREIGN KEY (Player_Black_Id) REFERENCES Player(Player_Id)
 );
 
--- Table to store players participating in games
+-- Table to store players participating in games (Depends on Game and Player)
 CREATE TABLE Game_Players (
     Game_Id INTEGER,
     Player_Id INTEGER,
@@ -81,28 +94,19 @@ CREATE TABLE Game_Players (
     FOREIGN KEY (Player_Id) REFERENCES Player(Player_Id) ON DELETE CASCADE
 );
 
--- Table to store tournament details
-CREATE TABLE Tournament (
-    Tournament_Id SERIAL PRIMARY KEY,
-    Name VARCHAR(100) UNIQUE,        -- Maximum 100 characters for tournament name
-    Location VARCHAR(100),           -- Maximum 100 characters for location
-    Total_Round_Number INT NOT NULL, -- Number of rounds in the tournament
-    Game_Date TIMESTAMP,
-    Format VARCHAR(50),              -- Maximum 50 characters for tournament format
-    Prize_Pool DECIMAL(15, 2)        -- Prize pool with 2 decimal places
-);
-
--- Table to store ranking details in tournaments
+-- Table to store ranking details in tournaments (Depends on Tournament)
 CREATE TABLE Tournament_Ranking (
-    Tournament_Id INTEGER,
-    Rank INT,                        -- Rank of the player in the tournament
-    Player_Name VARCHAR(50),         -- Maximum 50 characters for player name
-    Prize_Money_Won DECIMAL(15, 2),  -- Prize money with 2 decimal places
+    Tournament_Id INTEGER NOT NULL,
+    Rank INT NOT NULL,
+    Player_Name VARCHAR(50) NOT NULL,
+    Prize_Money_Won DECIMAL(15, 2) NOT NULL,
     PRIMARY KEY (Tournament_Id, Rank),
-    FOREIGN KEY (Tournament_Id) REFERENCES Tournament(Tournament_Id)
+    FOREIGN KEY (Tournament_Id) REFERENCES Tournament(Tournament_Id),
+    CONSTRAINT Chk_Rank CHECK (Rank > 0),
+    CONSTRAINT Chk_Prize CHECK (Prize_Money_Won >= 0)
 );
 
--- Create Tournament_Players Table
+-- Create Tournament_Players Table (Depends on Tournament and Player)
 CREATE TABLE Tournament_Players (
     Tournament_Id INTEGER NOT NULL,
     Player_Id INTEGER NOT NULL,
@@ -110,6 +114,7 @@ CREATE TABLE Tournament_Players (
     FOREIGN KEY (Tournament_Id) REFERENCES Tournament(Tournament_Id) ON DELETE CASCADE,
     FOREIGN KEY (Player_Id) REFERENCES Player(Player_Id) ON DELETE CASCADE
 );
+
 
 -- Function to calculate win probability with increased ELO weight
 CREATE OR REPLACE FUNCTION calculate_win_probability(white_elo INTEGER, black_elo INTEGER) 
@@ -557,10 +562,10 @@ $$ LANGUAGE plpgsql;
 
 -- Index creation
 CREATE INDEX idx_player
-ON Player(ELO_Rating);  -- Added semicolon
+ON Player(ELO_Rating);
 
 CREATE INDEX idx_tournament
-ON Tournament(Tournament_Id);  -- Added semicolon
+ON Tournament(Tournament_Id);  
 
 CREATE INDEX idx_game
-ON Game_Players(Player_Id,Game_Id);  -- Added semicolon
+ON Game_Players(Player_Id,Game_Id);  

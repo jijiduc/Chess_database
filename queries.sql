@@ -1,6 +1,6 @@
--- number 1 : créer un tournoi
-SELECT simulate_tournament('Open de Paris', 'Paris', 7, 10000.00);
--- number 2 : voir un tournoi
+-- 1 : créer un tournoi
+SELECT simulate_tournament('Open de Paris', 'Paris', 8, 50000.00);
+-- 2 : Afficher les parties du dernier tournoi en date
 WITH LastTournament AS (
     SELECT Tournament_Id 
     FROM Tournament 
@@ -9,6 +9,7 @@ WITH LastTournament AS (
 )
 SELECT 
     t.Name as Tournament_Name,
+    g.Round_Number || '.' || g.Round_Game_Number as Game_Number,
     g.Game_Date,
     pw.First_Name || ' ' || pw.Last_Name as White_Player,
     pb.First_Name || ' ' || pb.Last_Name as Black_Player,
@@ -25,7 +26,7 @@ JOIN Player pw ON g.Player_white_Id = pw.Player_Id
 JOIN Player pb ON g.Player_black_Id = pb.Player_Id
 JOIN Opening o ON g.Opening_Id = o.Opening_Id
 WHERE t.Tournament_Id = (SELECT Tournament_Id FROM LastTournament)
-ORDER BY g.Game_Date;
+ORDER BY g.Round_Number, g.Round_Game_Number;
 
 --Number 3 :  Retrieve the players (by rank) for each tournament along with their prize money and tournament name
 SELECT 
